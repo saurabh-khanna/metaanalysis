@@ -1,0 +1,43 @@
+---
+title: "l&L Metaanalysis"
+author: "Saurabh Khanna"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+# Libraries
+library(tidyverse)
+library(metafor)
+library(readxl)
+
+# Parameters
+data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
+
+```
+
+## Reading in data
+
+```{r}
+# join checks
+read_xlsx(data_file, sheet = "VR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+```
+
+
+
+## Calculate effect sizes
+

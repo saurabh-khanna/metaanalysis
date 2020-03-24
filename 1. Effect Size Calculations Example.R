@@ -24,7 +24,7 @@ read_xlsx("L&L Data Set Means SDs.xlsx", sheet = "VS") %>%
 
 
 
-      #### Load dataset ####
+#### Load dataset ####
 df <- read_xlsx("L&L Data Set Means SDs.xlsx", sheet = "VS")
  
 #### Calculate effect sizes using metafor ####
