@@ -60,18 +60,15 @@ df_rr_post <-
     ## This warning is displayed once per session.
 
 ``` r
-for (t in 1:3) {
-  for (c in 1:2) {
-    for (m in 1:2) {
+for (t in 1:4) {
+  for (c in 1:4) {
+    for (m in 1:4) {
       if (
         !(str_glue("T{t}M{m}post") %in% colnames(df_rr_post)) | 
         !(str_glue("C{c}M{m}post") %in% colnames(df_rr_post))
       ) {
         next
       }
-      #print(t)
-      #print(c)
-      #print(m)
       df_rr_post <-
         escalc(
           data = df_rr_post,
@@ -82,9 +79,28 @@ for (t in 1:3) {
           sd2i = df_rr_post[, str_c("C", c, "M", m, "post")] %>% unlist(),
           n1i = df_rr_post[, str_c("T", t, "N", m, "post")] %>% unlist(),
           n2i = df_rr_post[, str_c("C", c, "N", m, "post")] %>% unlist(),
-          var.names = c(str_glue("yi_t{t}m{m}_c{c}m{m}"), str_glue("vi_t{t}m{m}_c{c}m{m}"))
-        )
+          var.names = c(str_glue("ES_T{t}M{m}_C{c}M{m}"), str_glue("EV_T{t}M{m}_C{c}M{m}"))
+        ) 
     }
   }
 }
+
+df_rr_post <- 
+  df_rr_post %>% 
+  select(AUTYR, starts_with("E"))
+
+df_rr_post
 ```
+
+    ##        AUTYR ES_T1M1_C1M1 EV_T1M1_C1M1 ES_T1M2_C1M2 EV_T1M2_C1M2 ES_T2M1_C1M1 
+    ## 1 Connor18_3       0.0165       0.0207      -0.0178       0.0207       0.0155 
+    ## 2 Connor18_3       0.0140       0.0179      -0.0354       0.0179           NA 
+    ## 3   Dalton11       0.0999       0.0649       0.0726       0.0541       0.1047 
+    ##   EV_T2M1_C1M1 ES_T2M2_C1M2 EV_T2M2_C1M2 ES_T3M1_C1M1 EV_T3M1_C1M1 ES_T3M2_C1M2 
+    ## 1       0.0201      -0.0398       0.0201       0.0143       0.0197      -0.0400 
+    ## 2           NA           NA           NA           NA           NA           NA 
+    ## 3       0.0576       0.1234       0.0577           NA           NA           NA 
+    ##   EV_T3M2_C1M2 
+    ## 1       0.0197 
+    ## 2           NA 
+    ## 3           NA

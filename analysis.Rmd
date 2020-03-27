@@ -53,18 +53,15 @@ df_rr_post <-
   select_if(~ any(!is.na(.))) %>%
   select(AUTYR, sort(current_vars()))
 
-for (t in 1:3) {
-  for (c in 1:2) {
-    for (m in 1:2) {
+for (t in 1:4) {
+  for (c in 1:4) {
+    for (m in 1:4) {
       if (
         !(str_glue("T{t}M{m}post") %in% colnames(df_rr_post)) | 
         !(str_glue("C{c}M{m}post") %in% colnames(df_rr_post))
       ) {
         next
       }
-      #print(t)
-      #print(c)
-      #print(m)
       df_rr_post <-
         escalc(
           data = df_rr_post,
@@ -75,11 +72,17 @@ for (t in 1:3) {
           sd2i = df_rr_post[, str_c("C", c, "M", m, "post")] %>% unlist(),
           n1i = df_rr_post[, str_c("T", t, "N", m, "post")] %>% unlist(),
           n2i = df_rr_post[, str_c("C", c, "N", m, "post")] %>% unlist(),
-          var.names = c(str_glue("yi_t{t}m{m}_c{c}m{m}"), str_glue("vi_t{t}m{m}_c{c}m{m}"))
-        )
+          var.names = c(str_glue("ES_T{t}M{m}_C{c}M{m}"), str_glue("EV_T{t}M{m}_C{c}M{m}"))
+        ) 
     }
   }
 }
+
+df_rr_post <- 
+  df_rr_post %>% 
+  select(AUTYR, starts_with("E"))
+
+df_rr_post
 ```
 
 
