@@ -1,5 +1,5 @@
 ---
-title: "l&L Metaanalysis"
+title: "L&L Metaanalysis"
 author: "Saurabh Khanna"
 date: "`r Sys.Date()`"
 output: 
@@ -37,7 +37,56 @@ read_xlsx(data_file, sheet = "VR") %>%
   )
 ```
 
-
+All good!
 
 ## Calculate effect sizes
+
+### R studies
+
+#### RR studies
+
+```{r}
+df_rr_post <-
+  read_xlsx(data_file, sheet = "RR") %>% 
+  rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")) %>% 
+  filter(is.na(T1M1pre), is.na(T1S1pre)) %>%
+  #select_if(~ any(!is.na(.))) %>%
+  select(AUTYR, sort(current_vars()))
+
+for (t in 1:3) {
+  for (c in 1:2) {
+    for (m in 1:2) {
+      if (
+        !exists(str_glue("df_rr_post$T{t}M{m}post")) & 
+        !exists(str_glue("df_rr_post$C{c}M{m}post"))
+      ) {
+        print(str_glue("t = {t}"));
+        print(str_glue("c = {c}"));
+        print(str_glue("m = {m}"));
+        next
+      }
+      #print(t, c, m)
+      # df_rr_post <-
+      #   escalc(
+      #     measure = "SMD",
+      #     m1i = str_glue("T{t}M{m}post"), 
+      #     m2i = str_glue("C{c}M{m}post"),
+      #     sd1i = str_glue("T{t}S{m}post"), 
+      #     sd2i = str_glue("C{c}S{m}post"),
+      #     n1i = str_glue("T{t}N{t}post"), 
+      #     n2i = str_glue("C{c}N{m}post"),,
+      #     data = df_rr_post,
+      #     var.names = c(str_glue("yi_t{t}m{m}_c{c}m{m}"), str_glue("vi_t{t}m{m}_c{c}m{m}"))
+      #   )
+    }
+  }
+}
+
+ 
+
+
+%>%
+  view()
+```
+
 
