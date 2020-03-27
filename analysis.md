@@ -61,26 +61,28 @@ df_rr_post <-
 
 ``` r
 for (t in 1:4) {
-  for (c in 1:4) {
-    for (m in 1:4) {
-      if (
-        !(str_glue("T{t}M{m}post") %in% colnames(df_rr_post)) | 
-        !(str_glue("C{c}M{m}post") %in% colnames(df_rr_post))
-      ) {
-        next
+  for (mt in 1:4) {
+    for (c in 1:4) {
+      for (mc in 1:4) {
+        if (
+          !(str_glue("T{t}M{mt}post") %in% colnames(df_rr_post)) | 
+          !(str_glue("C{c}M{mc}post") %in% colnames(df_rr_post))
+        ) {
+          next
+        }
+        df_rr_post <-
+          escalc(
+            data = df_rr_post,
+            measure = "SMD",
+            m1i = df_rr_post[, str_c("T", t, "M", mt, "post")] %>% unlist(),
+            m2i = df_rr_post[, str_c("C", c, "M", mc, "post")] %>% unlist(),
+            sd1i = df_rr_post[, str_c("T", t, "S", mt, "post")] %>% unlist(),
+            sd2i = df_rr_post[, str_c("C", c, "M", mc, "post")] %>% unlist(),
+            n1i = df_rr_post[, str_c("T", t, "N", mt, "post")] %>% unlist(),
+            n2i = df_rr_post[, str_c("C", c, "N", mc, "post")] %>% unlist(),
+            var.names = c(str_glue("ES_T{t}M{mt}_C{c}M{mc}"), str_glue("EV_T{t}M{mt}_C{c}M{mc}"))
+          ) 
       }
-      df_rr_post <-
-        escalc(
-          data = df_rr_post,
-          measure = "SMD",
-          m1i = df_rr_post[, str_c("T", t, "M", m, "post")] %>% unlist(),
-          m2i = df_rr_post[, str_c("C", c, "M", m, "post")] %>% unlist(),
-          sd1i = df_rr_post[, str_c("T", t, "S", m, "post")] %>% unlist(),
-          sd2i = df_rr_post[, str_c("C", c, "M", m, "post")] %>% unlist(),
-          n1i = df_rr_post[, str_c("T", t, "N", m, "post")] %>% unlist(),
-          n2i = df_rr_post[, str_c("C", c, "N", m, "post")] %>% unlist(),
-          var.names = c(str_glue("ES_T{t}M{m}_C{c}M{m}"), str_glue("EV_T{t}M{m}_C{c}M{m}"))
-        ) 
     }
   }
 }
@@ -94,8 +96,8 @@ df_rr_post %>%
   knitr::kable()
 ```
 
-| AUTYR       | ES\_T1M1\_C1M1 | ES\_T1M2\_C1M2 | ES\_T2M1\_C1M1 | ES\_T2M2\_C1M2 | ES\_T3M1\_C1M1 | ES\_T3M2\_C1M2 |
-| :---------- | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: |
-| Connor18\_3 |      0.0164822 |    \-0.0177789 |      0.0155116 |    \-0.0398454 |      0.0142697 |    \-0.0399563 |
-| Connor18\_3 |      0.0140436 |    \-0.0354091 |             NA |             NA |             NA |             NA |
-| Dalton11    |      0.0998691 |      0.0725982 |      0.1046956 |      0.1234006 |             NA |             NA |
+| AUTYR       | ES\_T1M1\_C1M1 | ES\_T1M1\_C1M2 | ES\_T1M2\_C1M1 | ES\_T1M2\_C1M2 | ES\_T2M1\_C1M1 | ES\_T2M1\_C1M2 | ES\_T2M2\_C1M1 | ES\_T2M2\_C1M2 | ES\_T3M1\_C1M1 | ES\_T3M1\_C1M2 | ES\_T3M2\_C1M1 | ES\_T3M2\_C1M2 |
+| :---------- | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: |
+| Connor18\_3 |      0.0164822 |    \-0.2314048 |      0.2624684 |    \-0.0177789 |      0.0155116 |    \-0.2361821 |      0.2428244 |    \-0.0398454 |      0.0142697 |    \-0.2379407 |      0.2477972 |    \-0.0399563 |
+| Connor18\_3 |      0.0140436 |      0.1663439 |    \-0.1671847 |    \-0.0354091 |             NA |             NA |             NA |             NA |             NA |             NA |             NA |             NA |
+| Dalton11    |      0.0998691 |    \-0.1177517 |      0.3447373 |      0.0725982 |      0.1046956 |    \-0.1234453 |      0.3976402 |      0.1234006 |             NA |             NA |             NA |             NA |

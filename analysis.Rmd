@@ -54,26 +54,28 @@ df_rr_post <-
   select(AUTYR, sort(current_vars()))
 
 for (t in 1:4) {
-  for (c in 1:4) {
-    for (m in 1:4) {
-      if (
-        !(str_glue("T{t}M{m}post") %in% colnames(df_rr_post)) | 
-        !(str_glue("C{c}M{m}post") %in% colnames(df_rr_post))
-      ) {
-        next
+  for (mt in 1:4) {
+    for (c in 1:4) {
+      for (mc in 1:4) {
+        if (
+          !(str_glue("T{t}M{mt}post") %in% colnames(df_rr_post)) | 
+          !(str_glue("C{c}M{mc}post") %in% colnames(df_rr_post))
+        ) {
+          next
+        }
+        df_rr_post <-
+          escalc(
+            data = df_rr_post,
+            measure = "SMD",
+            m1i = df_rr_post[, str_c("T", t, "M", mt, "post")] %>% unlist(),
+            m2i = df_rr_post[, str_c("C", c, "M", mc, "post")] %>% unlist(),
+            sd1i = df_rr_post[, str_c("T", t, "S", mt, "post")] %>% unlist(),
+            sd2i = df_rr_post[, str_c("C", c, "M", mc, "post")] %>% unlist(),
+            n1i = df_rr_post[, str_c("T", t, "N", mt, "post")] %>% unlist(),
+            n2i = df_rr_post[, str_c("C", c, "N", mc, "post")] %>% unlist(),
+            var.names = c(str_glue("ES_T{t}M{mt}_C{c}M{mc}"), str_glue("EV_T{t}M{mt}_C{c}M{mc}"))
+          ) 
       }
-      df_rr_post <-
-        escalc(
-          data = df_rr_post,
-          measure = "SMD",
-          m1i = df_rr_post[, str_c("T", t, "M", m, "post")] %>% unlist(),
-          m2i = df_rr_post[, str_c("C", c, "M", m, "post")] %>% unlist(),
-          sd1i = df_rr_post[, str_c("T", t, "S", m, "post")] %>% unlist(),
-          sd2i = df_rr_post[, str_c("C", c, "M", m, "post")] %>% unlist(),
-          n1i = df_rr_post[, str_c("T", t, "N", m, "post")] %>% unlist(),
-          n2i = df_rr_post[, str_c("C", c, "N", m, "post")] %>% unlist(),
-          var.names = c(str_glue("ES_T{t}M{m}_C{c}M{m}"), str_glue("EV_T{t}M{m}_C{c}M{m}"))
-        ) 
     }
   }
 }
