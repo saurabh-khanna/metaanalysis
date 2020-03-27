@@ -83,6 +83,7 @@ df_rr_post <-
   select(AUTYR, starts_with("E"))
 
 df_rr_post %>% 
+  select(AUTYR, starts_with("ES")) %>% 
   knitr::kable()
 ```
 
