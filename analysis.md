@@ -1,7 +1,7 @@
 L\&L Metaanalysis
 ================
 Saurabh Khanna
-2020-03-27
+2020-04-08
 
   - [Reading in data](#reading-in-data)
   - [Calculate effect sizes](#calculate-effect-sizes)
@@ -21,7 +21,7 @@ data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
 
 ``` r
 # join checks
-read_xlsx(data_file, sheet = "VR") %>% 
+read_xlsx(data_file, sheet = "RR") %>% 
   select(AUTYR) %>% 
   drop_na(AUTYR) %>% 
   anti_join(
@@ -32,9 +32,6 @@ read_xlsx(data_file, sheet = "VR") %>%
   )
 ```
 
-    ## New names:
-    ## * `` -> ...40
-
     ## # A tibble: 0 x 1
     ## # … with 1 variable: AUTYR <chr>
 
@@ -44,342 +41,295 @@ All good\!
 
 ### R studies
 
-#### RR studies
+#### RR and RS studies
 
 Post only:
 
 ``` r
-df_rr_post <-
+df_r_post <-
   read_xlsx(data_file, sheet = "RR") %>% 
-  rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")) %>% 
-  filter(is.na(T1M1pre)) %>% 
+  rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")) %>%
+  bind_rows(
+    "RR" = .,
+    "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(is.na(TM1pre)) %>% 
   select_if(~ any(!is.na(.))) %>%
-  select(AUTYR, sort(current_vars()))
+  select(AUTYR, type, sort(current_vars()))
 ```
+
+    ## New names:
+    ## * TSRS1delay -> TSRS1delay...8
+    ## * TSRS1delay -> TSRS1delay...9
+    ## * TSRS2delay -> TSRS2delay...24
+    ## * TSRS2delay -> TSRS2delay...25
 
     ## Warning: current_vars() is deprecated. 
     ## Please use tidyselect::peek_vars() instead
     ## This warning is displayed once per session.
 
 ``` r
-for (t in 1:4) {
-  for (mt in 1:4) {
-    for (c in 1:4) {
-      for (mc in 1:4) {
-        if (
-          !(str_glue("T{t}M{mt}post") %in% colnames(df_rr_post)) | 
-          !(str_glue("C{c}M{mc}post") %in% colnames(df_rr_post))
-        ) {
-          next
-        }
-        df_rr_post <-
-          escalc(
-            data = df_rr_post,
-            measure = "SMD",
-            m1i = df_rr_post[, str_c("T", t, "M", mt, "post")] %>% unlist(),
-            m2i = df_rr_post[, str_c("C", c, "M", mc, "post")] %>% unlist(),
-            sd1i = df_rr_post[, str_c("T", t, "S", mt, "post")] %>% unlist(),
-            sd2i = df_rr_post[, str_c("C", c, "M", mc, "post")] %>% unlist(),
-            n1i = df_rr_post[, str_c("T", t, "N", mt, "post")] %>% unlist(),
-            n2i = df_rr_post[, str_c("C", c, "N", mc, "post")] %>% unlist(),
-            var.names = c(str_glue("ES_T{t}M{mt}_C{c}M{mc}"), str_glue("EV_T{t}M{mt}_C{c}M{mc}"))
-          ) 
-      }
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("TM{mt}post") %in% colnames(df_r_post)) | 
+      !(str_glue("CM{mc}post") %in% colnames(df_r_post))
+    ) {
+      next
     }
+    df_r_post <-
+      escalc(
+        data = df_r_post,
+        measure = "SMD",
+        m1i = df_r_post[, str_c("TM", mt, "post")] %>% unlist(),
+        m2i = df_r_post[, str_c("CM", mc, "post")] %>% unlist(),
+        sd1i = df_r_post[, str_c("TS", mt, "post")] %>% unlist(),
+        sd2i = df_r_post[, str_c("CM", mc, "post")] %>% unlist(),
+        n1i = df_r_post[, str_c("TN", mt, "post")] %>% unlist(),
+        n2i = df_r_post[, str_c("CN", mc, "post")] %>% unlist(),
+        var.names = c(str_glue("ES_TM{mt}_CM{mc}"), str_glue("EV_TM{mt}_CM{mc}"))
+      ) 
   }
 }
 
-df_rr_post <- df_rr_post %>% select(AUTYR, starts_with("E"))
 
-# post test only ES broken down
-df_rr_post %>% 
-  select(AUTYR, starts_with("ES")) %>% 
+df_r_post <-
+  df_r_post %>% 
+  transmute(
+    AUTYR, 
+    type,
+    ES =
+      pmap_dbl(
+        select(., starts_with("ES_")),
+        ~ mean(c(...), na.rm = TRUE)
+      ),
+    EV =
+      pmap_dbl(
+        select(., starts_with("EV_")),
+        ~ mean(c(...), na.rm = TRUE)
+      )
+  )
+
+# post test only ES
+df_r_post %>%
   knitr::kable()
 ```
 
-| AUTYR       | ES\_T1M1\_C1M1 | ES\_T1M1\_C1M2 | ES\_T1M2\_C1M1 | ES\_T1M2\_C1M2 | ES\_T2M1\_C1M1 | ES\_T2M1\_C1M2 | ES\_T2M2\_C1M1 | ES\_T2M2\_C1M2 | ES\_T3M1\_C1M1 | ES\_T3M1\_C1M2 | ES\_T3M2\_C1M1 | ES\_T3M2\_C1M2 |
-| :---------- | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: |
-| Connor18\_3 |      0.0164822 |    \-0.2314048 |      0.2624684 |    \-0.0177789 |      0.0155116 |    \-0.2361821 |      0.2428244 |    \-0.0398454 |      0.0142697 |    \-0.2379407 |      0.2477972 |    \-0.0399563 |
-| Connor18\_3 |      0.0140436 |      0.1663439 |    \-0.1671847 |    \-0.0354091 |             NA |             NA |             NA |             NA |             NA |             NA |             NA |             NA |
-| Dalton11    |      0.0998691 |    \-0.1177517 |      0.3447373 |      0.0725982 |      0.1046956 |    \-0.1234453 |      0.3976402 |      0.1234006 |             NA |             NA |             NA |             NA |
-
-``` r
-# combining measures
-# df_rr_post %>% 
-#   select(AUTYR, starts_with("E")) %>% 
-#   select_if(~ any(!is.na(.))) %>% 
-#   gather(-AUTYR, key = "type", value = "value", na.rm = TRUE) %>% 
-#   mutate(
-#     type = str_replace_all(type, "M\\d", "")
-#   ) %>% 
-#   arrange(AUTYR, type) %>% 
-#   group_by(AUTYR, type) %>% 
-#   mutate(
-#     id = row_number()
-#   ) %>% 
-#   spread(type, value) %>% 
-#   select(AUTYR, sort(current_vars()), -id) %>%
-#   ungroup() %>% 
-#   group_by(AUTYR) %>% 
-#   summarize(
-#     es_T1_C1 = 
-#       rma(yi = ES_T1_C1, vi = EV_T1_C1, method = "REML") %>% 
-#       summary() %>% 
-#       coef() %>% 
-#       pull(estimate),
-#     EV_T1_C1 = 
-#       (
-#         rma(yi = ES_T1_C1, vi = EV_T1_C1, method = "REML") %>% 
-#           summary() %>% 
-#           coef() %>% 
-#           pull(se)
-#       ) ^ 2,
-#     # alter 4 below
-#     ES_T2_C1 = mean(ES_T2_C1, na.rm = T), #
-#     EV_T2_C1 = mean(EV_T2_C1, na.rm = T), #
-#     ES_T3_C1 = mean(ES_T3_C1, na.rm = T), #
-#     EV_T3_C1 = mean(EV_T3_C1, na.rm = T) #
-#   ) %>% 
-#   rename_all(str_to_upper)
-```
+| AUTYR            | type |          ES |        EV |
+| :--------------- | :--: | ----------: | --------: |
+| Dalton11\_V      |  RR  |   0.0995073 | 0.0543501 |
+| Dalton11\_VC     |  RR  |   0.1255728 | 0.0579221 |
+| Connor18\_3\_COM |  RS  | \-0.1074613 | 0.0207957 |
+| Connor18\_3\_ERC |  RS  | \-0.1103352 | 0.0201836 |
+| Connor18\_3\_LIM |  RS  | \-0.1118355 | 0.0198132 |
+| Connor18\_4\_ERC |  RS  |   0.0901937 | 0.0179108 |
+| Dalton11\_V      |  RS  |   0.0289196 | 0.0540992 |
+| Dalton11\_VC     |  RS  |   0.0059258 | 0.0575660 |
 
 Pre and post:
 
 ``` r
-df_rr_prepost <-
+df_r_prepost <-
   read_xlsx(data_file, sheet = "RR") %>% 
-  rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")) %>% 
-  filter(!is.na(T1M1pre)) %>% 
+  rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")) %>%
+  bind_rows(
+    "RR" = .,
+    "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(!is.na(TM1pre)) %>% 
   select_if(~ any(!is.na(.))) %>%
-  select(AUTYR, sort(current_vars()))
+  select(AUTYR, type, sort(current_vars()))
+```
 
+    ## New names:
+    ## * TSRS1delay -> TSRS1delay...8
+    ## * TSRS1delay -> TSRS1delay...9
+    ## * TSRS2delay -> TSRS2delay...24
+    ## * TSRS2delay -> TSRS2delay...25
+
+``` r
 # treatment
-for (t in 1:4) {
-  for (mt in 1:4) {
-    for (c in 1:4) {
-      for (mc in 1:4) {
-        if (
-          !(str_glue("T{t}M{mt}post") %in% colnames(df_rr_prepost)) | 
-          !(str_glue("T{t}M{mt}pre") %in% colnames(df_rr_prepost))
-        ) {
-          next
-        }
-        df_rr_prepost <-
-          escalc(
-            data = df_rr_prepost,
-            measure = "SMCR",
-            m1i = df_rr_prepost[, str_c("T", t, "M", mt, "post")] %>% unlist(),
-            m2i = df_rr_prepost[, str_c("T", t, "M", mt, "pre")] %>% unlist(),
-            sd1i = df_rr_prepost[, str_c("T", t, "S", mt, "pre")] %>% unlist(),
-            ni = df_rr_prepost[, str_c("T", t, "N", mt, "post")] %>% unlist(),
-            ri = c(0.7, 0.7, 0.7, 0.7, 0.7, 0.7),
-            var.names = c(str_glue("TES_T{t}M{mt}_C{c}M{mc}"), str_glue("TEV_T{t}M{mt}_C{c}M{mc}"))
-          ) 
-      }
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("TM{mt}post") %in% colnames(df_r_prepost)) | 
+      !(str_glue("TM{mt}pre") %in% colnames(df_r_prepost))
+    ) {
+      next
     }
+    df_r_prepost <-
+      escalc(
+        data = df_r_prepost,
+        measure = "SMCR",
+        m1i = df_r_prepost[, str_c("TM", mt, "post")] %>% unlist(),
+        m2i = df_r_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
+        sd1i = df_r_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
+        ni = df_r_prepost[, str_c("TN", mt, "post")] %>% unlist(),
+        ri = rep(0.7, 19),
+        var.names = c(str_glue("TES_TM{mt}_CM{mc}"), str_glue("TEV_TM{mt}_CM{mc}"))
+      ) 
   }
 }
 
 # control
-for (t in 1:4) {
-  for (mt in 1:4) {
-    for (c in 1:4) {
-      for (mc in 1:4) {
-        if (
-          !(str_glue("C{c}M{mc}post") %in% colnames(df_rr_prepost)) | 
-          !(str_glue("C{c}M{mc}pre") %in% colnames(df_rr_prepost))
-        ) {
-          next
-        }
-        df_rr_prepost <-
-          escalc(
-            data = df_rr_prepost,
-            measure = "SMCR",
-            m1i = df_rr_prepost[, str_c("C", c, "M", mc, "post")] %>% unlist(),
-            m2i = df_rr_prepost[, str_c("C", c, "M", mc, "pre")] %>% unlist(),
-            sd1i = df_rr_prepost[, str_c("C", c, "S", mc, "pre")] %>% unlist(),
-            ni = df_rr_prepost[, str_c("C", c, "N", mc, "post")] %>% unlist(),
-            ri = c(0.7, 0.7, 0.7, 0.7, 0.7, 0.7),
-            var.names = c(str_glue("CES_T{t}M{mt}_C{c}M{mc}"), str_glue("CEV_T{t}M{mt}_C{c}M{mc}"))
-          ) 
-      }
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("CM{mc}post") %in% colnames(df_r_prepost)) | 
+      !(str_glue("CM{mc}pre") %in% colnames(df_r_prepost))
+    ) {
+      next
     }
+    df_r_prepost <-
+      escalc(
+        data = df_r_prepost,
+        measure = "SMCR",
+        m1i = df_r_prepost[, str_c("CM", mc, "post")] %>% unlist(),
+        m2i = df_r_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
+        sd1i = df_r_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
+        ni = df_r_prepost[, str_c("CN", mc, "post")] %>% unlist(),
+        ri = rep(0.7, 19),
+        var.names = c(str_glue("CES_TM{mt}_CM{mc}"), str_glue("CEV_TM{mt}_CM{mc}"))
+      ) 
   }
 }
 
 # ES and EV taken together
-for (t in 1:4) {
-  for (mt in 1:4) {
-    for (c in 1:4) {
-      for (mc in 1:4) {
-        if (
-          !(str_glue("TES_T{t}M{mt}_C{c}M{mc}") %in% colnames(df_rr_prepost)) | 
-          !(str_glue("TEV_T{t}M{mt}_C{c}M{mc}") %in% colnames(df_rr_prepost)) |
-          !(str_glue("CES_T{t}M{mt}_C{c}M{mc}") %in% colnames(df_rr_prepost)) | 
-          !(str_glue("CEV_T{t}M{mt}_C{c}M{mc}") %in% colnames(df_rr_prepost))
-        ) {
-          next
-        }
-        # subtracting effect size
-        df_rr_prepost[, str_c("ES_T", t, "M", mt, "_C", c, "M", mc)] <- 
-          (df_rr_prepost[, str_c("TES_T", t, "M", mt, "_C", c, "M", mc)] %>% unlist()) -
-          (df_rr_prepost[, str_c("CES_T", t, "M", mt, "_C", c, "M", mc)] %>% unlist())
-        # adding variance
-        df_rr_prepost[, str_c("EV_T", t, "M", mt, "_C", c, "M", mc)] <- 
-          (df_rr_prepost[, str_c("TEV_T", t, "M", mt, "_C", c, "M", mc)] %>% unlist()) +
-          (df_rr_prepost[, str_c("CEV_T", t, "M", mt, "_C", c, "M", mc)] %>% unlist())
-      }
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("TES_TM{mt}_CM{mc}") %in% colnames(df_r_prepost)) | 
+      !(str_glue("TEV_TM{mt}_CM{mc}") %in% colnames(df_r_prepost)) |
+      !(str_glue("CES_TM{mt}_CM{mc}") %in% colnames(df_r_prepost)) | 
+      !(str_glue("CEV_TM{mt}_CM{mc}") %in% colnames(df_r_prepost))
+    ) {
+      next
     }
+    # subtracting effect size
+    df_r_prepost[, str_c("ES_TM", mt, "_CM", mc)] <- 
+      (df_r_prepost[, str_c("TES_TM", mt, "_CM", mc)] %>% unlist()) -
+      (df_r_prepost[, str_c("CES_TM", mt, "_CM", mc)] %>% unlist())
+    # adding variance
+    df_r_prepost[, str_c("EV_TM", mt, "_CM", mc)] <- 
+      (df_r_prepost[, str_c("TEV_TM", mt, "_CM", mc)] %>% unlist()) +
+      (df_r_prepost[, str_c("CEV_TM", mt, "_CM", mc)] %>% unlist())
   }
 }
 
-df_rr_prepost <- df_rr_prepost %>% select(AUTYR, starts_with("E"))
+df_r_prepost %>% select(starts_with("EV"))
+```
 
+    ##     EV_TM1_CM1 EV_TM1_CM2 EV_TM2_CM1 EV_TM2_CM2 
+    ## 1  1.764060308 0.99931240 1.47735997 0.71261206 
+    ## 2  0.010601668         NA         NA         NA 
+    ## 3  0.015863129 0.01592008 0.01192921 0.01198616 
+    ## 4  0.002060317         NA         NA         NA 
+    ## 5  0.076870615         NA         NA         NA 
+    ## 6  0.055339000         NA         NA         NA 
+    ## 7  0.059624952         NA         NA         NA 
+    ## 8  0.001093445         NA         NA         NA 
+    ## 9  0.001108371         NA         NA         NA 
+    ## 10 0.019684909         NA         NA         NA 
+    ## 11 0.010541615         NA         NA         NA 
+    ## 12 0.012473004         NA         NA         NA 
+    ## 13 0.011453049         NA         NA         NA 
+    ## 14 0.004563002         NA         NA         NA 
+    ## 15 0.005416962         NA         NA         NA 
+    ## 16 0.004438423         NA         NA         NA 
+    ## 17 0.077795255         NA         NA         NA 
+    ## 18 0.090851328         NA         NA         NA 
+    ## 19 0.002073582         NA         NA         NA
+
+``` r
+df_r_prepost <- 
+  df_r_prepost %>% 
+  transmute(
+    AUTYR, 
+    type,
+    ES =
+      pmap_dbl(
+        select(., starts_with("ES_")),
+        ~ mean(c(...), na.rm = TRUE)
+      ),
+    EV =
+      pmap_dbl(
+        select(., starts_with("EV_")),
+        ~ mean(c(...), na.rm = TRUE)
+      )
+  )
+  
 # pre + post test
-df_rr_prepost %>% 
-  select(AUTYR, starts_with("ES")) %>% 
-  select_if(~ any(!is.na(.))) %>%
+df_r_prepost %>%
   knitr::kable()
 ```
 
-| AUTYR           | ES\_T1M1\_C1M1 | ES\_T1M1\_C1M2 | ES\_T1M1\_C2M1 | ES\_T1M2\_C1M1 | ES\_T1M2\_C1M2 | ES\_T2M1\_C1M1 | ES\_T2M1\_C2M1 |
-| :-------------- | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: | -------------: |
-| Berry13         |    \-1.4883572 |      2.2766576 |             NA |    \-2.9909467 |      0.7740681 |             NA |             NA |
-| Graham15        |      0.1519858 |             NA |             NA |             NA |             NA |             NA |             NA |
-| Silverman17a\_K |      0.0647812 |    \-0.3409696 |             NA |      0.5860680 |      0.1803172 |             NA |             NA |
-| Silverman17a\_4 |      1.1520128 |      1.0910970 |             NA |      0.6105715 |      0.5496556 |             NA |             NA |
-| VadSanHer15     |      0.2178669 |             NA |             NA |             NA |             NA |             NA |             NA |
-| Morris12        |      0.2564557 |             NA |       0.577858 |             NA |             NA |      0.2364356 |      0.5578379 |
+| AUTYR           | type |          ES |        EV |
+| :-------------- | :--: | ----------: | --------: |
+| Berry13         |  RR  | \-0.3571446 | 1.2383362 |
+| Graham15        |  RR  |   0.1519858 | 0.0106017 |
+| Silverman17a\_4 |  RR  |   0.8508342 | 0.0139246 |
+| VadSanHer15     |  RR  |   0.2178669 | 0.0020603 |
+| Apel14\_1       |  RS  |   0.3604871 | 0.0768706 |
+| Apel14\_2       |  RS  | \-0.0919161 | 0.0553390 |
+| Daunic13        |  RS  | \-0.2206484 | 0.0596250 |
+| Jones19\_1      |  RS  |   0.0537309 | 0.0010934 |
+| Jones19\_2      |  RS  |   0.1929975 | 0.0011084 |
+| Morris12        |  RS  |   0.2364356 | 0.0196849 |
+| Proctor11       |  RS  | \-0.0436775 | 0.0105416 |
+| Proctor19       |  RS  |   0.2331418 | 0.0124730 |
+| Silverman17b\_4 |  RS  | \-0.1127521 | 0.0114530 |
+| Silverman17a\_4 |  RS  | \-0.0014823 | 0.0045630 |
+| Simmons10\_CBAU |  RS  | \-0.0727496 | 0.0054170 |
+| Simmons10\_CALT |  RS  | \-0.0568601 | 0.0044384 |
+| Tong10\_B       |  RS  |   0.0172740 | 0.0777953 |
+| Tong10\_G       |  RS  |   0.2822964 | 0.0908513 |
+| VadSanHer15     |  RS  |   0.0500486 | 0.0020736 |
 
 Combining RR in a single tibble:
 
 ``` r
-rr_all <-
-  df_rr_prepost %>% 
-  select(AUTYR, starts_with("E")) %>% 
-  select_if(~ any(!is.na(.))) %>% 
-  gather(-AUTYR, key = "type", value = "value", na.rm = TRUE) %>% 
-  mutate(
-    type = str_replace_all(type, "M\\d", "")
-  ) %>% 
-  arrange(AUTYR, type) %>% 
-  group_by(AUTYR, type) %>% 
-  mutate(
-    id = row_number()
-  ) %>% 
-  spread(type, value) %>% 
-  select(AUTYR, sort(current_vars()), -id) %>%
-  ungroup() %>% 
-  group_by(AUTYR) %>% 
-  summarize(
-    es_T1_C1 = 
-      rma(yi = ES_T1_C1, vi = EV_T1_C1, method = "REML") %>% 
-      summary() %>% 
-      coef() %>% 
-      pull(estimate),
-    EV_T1_C1 = 
-      (
-        rma(yi = ES_T1_C1, vi = EV_T1_C1, method = "REML") %>% 
-          summary() %>% 
-          coef() %>% 
-          pull(se)
-      ) ^ 2,
-    ES_T1_C2 = mean(ES_T1_C2, na.rm = FALSE),
-    ES_T2_C1 = mean(ES_T2_C1, na.rm = FALSE),
-    ES_T2_C2 = mean(ES_T2_C2, na.rm = FALSE),
-    EV_T1_C2 = mean(EV_T1_C2, na.rm = FALSE),
-    EV_T2_C1 = mean(EV_T2_C1, na.rm = FALSE),
-    EV_T2_C2 = mean(EV_T2_C2, na.rm = FALSE)
-  ) %>% 
-  rename_all(str_to_upper) %>% 
-  bind_rows(
-    df_rr_post %>% 
-      select(AUTYR, starts_with("E")) %>% 
-      select_if(~ any(!is.na(.))) %>% 
-      gather(-AUTYR, key = "type", value = "value", na.rm = TRUE) %>% 
-      mutate(
-        type = str_replace_all(type, "M\\d", "")
-      ) %>% 
-      arrange(AUTYR, type) %>% 
-      group_by(AUTYR, type) %>% 
-      mutate(
-        id = row_number()
-      ) %>% 
-      spread(type, value) %>% 
-      select(AUTYR, sort(current_vars()), -id) %>%
-      ungroup() %>% 
-      group_by(AUTYR) %>% 
-      summarize(
-        es_T1_C1 = 
-          rma(yi = ES_T1_C1, vi = EV_T1_C1, method = "REML") %>% 
-          summary() %>% 
-          coef() %>% 
-          pull(estimate),
-        EV_T1_C1 = 
-          (
-            rma(yi = ES_T1_C1, vi = EV_T1_C1, method = "REML") %>% 
-              summary() %>% 
-              coef() %>% 
-              pull(se)
-          ) ^ 2,
-        # alter 4 below
-        ES_T2_C1 = mean(ES_T2_C1, na.rm = T), #
-        EV_T2_C1 = mean(EV_T2_C1, na.rm = T), #
-        ES_T3_C1 = mean(ES_T3_C1, na.rm = T), #
-        EV_T3_C1 = mean(EV_T3_C1, na.rm = T) #
-      ) %>% 
-      rename_all(str_to_upper)
-  ) %>%
-  mutate(
-    es_list = pmap(list(ES_T1_C1, ES_T1_C2, ES_T2_C1, ES_T2_C2, ES_T3_C1), list),
-    ev_list = pmap(list(EV_T1_C1, EV_T1_C2, EV_T2_C1, EV_T2_C2, EV_T3_C1), list),
-    ES = 
-      map2_dbl(
-        es_list, 
-        ev_list, 
-        ~ rma(
-          yi = .x %>% unlist(), 
-          vi = .y %>% unlist(), 
-          method = "REML"
-        ) %>% 
-          summary() %>% 
-          coef() %>% 
-          pull(estimate)
-      ),
-    EV = 
-      (
-        map2_dbl(
-          es_list, 
-          ev_list, 
-          ~ rma(
-            yi = .x %>% unlist(), 
-            vi = .y %>% unlist(), 
-            method = "REML"
-          ) %>% 
-            summary() %>% 
-            coef() %>% 
-            pull(se)
-        )
-      ) ^ 2
-  ) %>% 
-  select(AUTYR, ES, EV, sort(current_vars()), -es_list, -ev_list)
+df_r <- bind_rows(df_r_post, df_r_prepost)
 
-rr_all %>% knitr::kable()
+df_r %>% knitr::kable()
 ```
 
-| AUTYR           |          ES |        EV |  ES\_T1\_C1 | ES\_T1\_C2 |  ES\_T2\_C1 | ES\_T2\_C2 |  ES\_T3\_C1 | EV\_T1\_C1 | EV\_T1\_C2 | EV\_T2\_C1 | EV\_T2\_C2 | EV\_T3\_C1 |
-| :-------------- | ----------: | --------: | ----------: | ---------: | ----------: | ---------: | ----------: | ---------: | ---------: | ---------: | ---------: | ---------: |
-| Berry13         | \-0.2449895 | 1.3566568 | \-0.2449895 |         NA |          NA |         NA |          NA |  1.3566568 |         NA |         NA |         NA |         NA |
-| Graham15        |   0.1519858 | 0.0106017 |   0.1519858 |         NA |          NA |         NA |          NA |  0.0106017 |         NA |         NA |         NA |         NA |
-| Morris12        |   0.4080045 | 0.0086419 |   0.2564557 |   0.577858 |   0.2364356 |  0.5578379 |          NA |  0.0192493 |  0.0189074 |  0.0196849 |   0.019343 |         NA |
-| Silverman17a\_4 |   0.8454605 | 0.0247231 |   0.8454605 |         NA |          NA |         NA |          NA |  0.0247231 |         NA |         NA |         NA |         NA |
-| Silverman17a\_K |   0.1216708 | 0.0363608 |   0.1216708 |         NA |          NA |         NA |          NA |  0.0363608 |         NA |         NA |         NA |         NA |
-| VadSanHer15     |   0.2178669 | 0.0020603 |   0.2178669 |         NA |          NA |         NA |          NA |  0.0020603 |         NA |         NA |         NA |         NA |
-| Connor18\_3     | \-0.0005979 | 0.0023523 |   0.0005064 |         NA | \-0.0044229 |         NA | \-0.0039575 |  0.0030758 |         NA |  0.0201864 |         NA |   0.019817 |
-| Dalton11        |   0.1122129 | 0.0117944 |   0.1087969 |         NA |   0.1255728 |         NA |         NaN |  0.0148102 |         NA |  0.0579221 |         NA |        NaN |
+| AUTYR            | type |          ES |        EV |
+| :--------------- | :--: | ----------: | --------: |
+| Dalton11\_V      |  RR  |   0.0995073 | 0.0543501 |
+| Dalton11\_VC     |  RR  |   0.1255728 | 0.0579221 |
+| Connor18\_3\_COM |  RS  | \-0.1074613 | 0.0207957 |
+| Connor18\_3\_ERC |  RS  | \-0.1103352 | 0.0201836 |
+| Connor18\_3\_LIM |  RS  | \-0.1118355 | 0.0198132 |
+| Connor18\_4\_ERC |  RS  |   0.0901937 | 0.0179108 |
+| Dalton11\_V      |  RS  |   0.0289196 | 0.0540992 |
+| Dalton11\_VC     |  RS  |   0.0059258 | 0.0575660 |
+| Berry13          |  RR  | \-0.3571446 | 1.2383362 |
+| Graham15         |  RR  |   0.1519858 | 0.0106017 |
+| Silverman17a\_4  |  RR  |   0.8508342 | 0.0139246 |
+| VadSanHer15      |  RR  |   0.2178669 | 0.0020603 |
+| Apel14\_1        |  RS  |   0.3604871 | 0.0768706 |
+| Apel14\_2        |  RS  | \-0.0919161 | 0.0553390 |
+| Daunic13         |  RS  | \-0.2206484 | 0.0596250 |
+| Jones19\_1       |  RS  |   0.0537309 | 0.0010934 |
+| Jones19\_2       |  RS  |   0.1929975 | 0.0011084 |
+| Morris12         |  RS  |   0.2364356 | 0.0196849 |
+| Proctor11        |  RS  | \-0.0436775 | 0.0105416 |
+| Proctor19        |  RS  |   0.2331418 | 0.0124730 |
+| Silverman17b\_4  |  RS  | \-0.1127521 | 0.0114530 |
+| Silverman17a\_4  |  RS  | \-0.0014823 | 0.0045630 |
+| Simmons10\_CBAU  |  RS  | \-0.0727496 | 0.0054170 |
+| Simmons10\_CALT  |  RS  | \-0.0568601 | 0.0044384 |
+| Tong10\_B        |  RS  |   0.0172740 | 0.0777953 |
+| Tong10\_G        |  RS  |   0.2822964 | 0.0908513 |
+| VadSanHer15      |  RS  |   0.0500486 | 0.0020736 |
 
 ``` r
-rr_all %>% 
+# All R studies
+df_r %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -389,10 +339,52 @@ rr_all %>%
   ) %>% 
   forest(
     order = "obs",
-    xlab = "Reading Comprehension (Research developed measure)",
+    xlab = "Reading Comprehension",
     addcred = T, 
     header = T
   )
 ```
 
 <img src="analysis_files/figure-gfm/unnamed-chunk-5-1.png" width="100%" height="100%" />
+
+``` r
+# All RR studies
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Reading Comprehension (Custom measure)",
+    addcred = T, 
+    header = T
+  )
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-5-2.png" width="100%" height="100%" />
+
+``` r
+# All RS studies
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Reading Comprehension (Standardized measure)",
+    addcred = T, 
+    header = T
+  )
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-5-3.png" width="100%" height="100%" />
