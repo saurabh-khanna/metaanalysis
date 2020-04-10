@@ -1,25 +1,27 @@
-L\&L Meta-analysis
+Metaanalysis Script
 ================
 Saurabh Khanna
 2020-04-10
 
   - [Reading in data](#reading-in-data)
-  - [Calculate effect sizes](#calculate-effect-sizes)
-      - [R studies](#r-studies)
+  - [R Studies](#r-studies)
+      - [Calculate effect sizes](#calculate-effect-sizes)
+      - [Synthesizing effect sizes](#synthesizing-effect-sizes)
+      - [Moderator effects](#moderator-effects)
 
 ``` r
 # Libraries
 library(tidyverse)
 ```
 
-    ## ── Attaching packages ─────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+    ## ── Attaching packages ─────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
 
     ## ✓ ggplot2 3.3.0     ✓ purrr   0.3.3
     ## ✓ tibble  3.0.0     ✓ dplyr   0.8.5
     ## ✓ tidyr   1.0.2     ✓ stringr 1.4.0
     ## ✓ readr   1.3.1     ✓ forcats 0.5.0
 
-    ## ── Conflicts ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+    ## ── Conflicts ────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
     ## x dplyr::filter() masks stats::filter()
     ## x dplyr::lag()    masks stats::lag()
 
@@ -148,9 +150,9 @@ read_xlsx(data_file, sheet = "RS") %>%
 
 All good\!
 
-## Calculate effect sizes
+## R Studies
 
-### R studies
+### Calculate effect sizes
 
 #### Post only
 
@@ -333,46 +335,78 @@ df_r_prepost <-
   )
 ```
 
-Combining all R studies in a single tibble:
+### Synthesizing effect sizes
 
 ``` r
-df_r <- bind_rows(df_r_post, df_r_prepost)
+# Combining all R studies in a single tibble
+df_r <- bind_rows(df_r_post, df_r_prepost) %>% arrange(type, AUTYR)
 
 df_r %>% knitr::kable()
 ```
 
 | AUTYR            | type |          ES |        EV |
 | :--------------- | :--: | ----------: | --------: |
+| Berry13          |  RR  | \-0.3571446 | 1.2383362 |
 | Dalton11\_V      |  RR  |   0.0995073 | 0.0543501 |
 | Dalton11\_VC     |  RR  |   0.1255728 | 0.0579221 |
+| Graham15         |  RR  |   0.1519858 | 0.0106017 |
+| Silverman17a\_4  |  RR  |   0.8508342 | 0.0139246 |
+| VadSanHer15      |  RR  |   0.2178669 | 0.0020603 |
+| Apel14\_1        |  RS  |   0.3604871 | 0.0768706 |
+| Apel14\_2        |  RS  | \-0.0919161 | 0.0553390 |
 | Connor18\_3\_COM |  RS  |   0.0074417 | 0.0208056 |
 | Connor18\_3\_ERC |  RS  | \-0.0044229 | 0.0201864 |
 | Connor18\_3\_LIM |  RS  | \-0.0039575 | 0.0198170 |
 | Connor18\_4\_ERC |  RS  | \-0.0055516 | 0.0179116 |
 | Dalton11\_V      |  RS  |   0.0289196 | 0.0540992 |
 | Dalton11\_VC     |  RS  |   0.0059258 | 0.0575660 |
-| Berry13          |  RR  | \-0.3571446 | 1.2383362 |
-| Graham15         |  RR  |   0.1519858 | 0.0106017 |
-| Silverman17a\_4  |  RR  |   0.8508342 | 0.0139246 |
-| VadSanHer15      |  RR  |   0.2178669 | 0.0020603 |
-| Apel14\_1        |  RS  |   0.3604871 | 0.0768706 |
-| Apel14\_2        |  RS  | \-0.0919161 | 0.0553390 |
 | Daunic13         |  RS  | \-0.2206484 | 0.0596250 |
 | Jones19\_1       |  RS  |   0.0537309 | 0.0010934 |
 | Jones19\_2       |  RS  |   0.1929975 | 0.0011084 |
 | Morris12         |  RS  |   0.2364356 | 0.0196849 |
 | Proctor11        |  RS  | \-0.0436775 | 0.0105416 |
 | Proctor19        |  RS  |   0.2331418 | 0.0124730 |
-| Silverman17b\_4  |  RS  | \-0.1127521 | 0.0114530 |
 | Silverman17a\_4  |  RS  | \-0.0014823 | 0.0045630 |
-| Simmons10\_CBAU  |  RS  | \-0.0727496 | 0.0054170 |
+| Silverman17b\_4  |  RS  | \-0.1127521 | 0.0114530 |
 | Simmons10\_CALT  |  RS  | \-0.0568601 | 0.0044384 |
+| Simmons10\_CBAU  |  RS  | \-0.0727496 | 0.0054170 |
 | Tong10\_B        |  RS  |   0.0172740 | 0.0777953 |
 | Tong10\_G        |  RS  |   0.2822964 | 0.0908513 |
 | VadSanHer15      |  RS  |   0.0500486 | 0.0020736 |
 
 ``` r
 # All R studies (REML)
+df_r %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  )
+```
+
+    ## 
+    ## Random-Effects Model (k = 27; tau^2 estimator: REML)
+    ## 
+    ## tau^2 (estimated amount of total heterogeneity): 0.0273 (SE = 0.0121)
+    ## tau (square root of estimated tau^2 value):      0.1651
+    ## I^2 (total heterogeneity / total variability):   79.49%
+    ## H^2 (total variability / sampling variability):  4.88
+    ## 
+    ## Test for Heterogeneity:
+    ## Q(df = 26) = 86.3072, p-val < .0001
+    ## 
+    ## Model Results:
+    ## 
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.0888  0.0420  2.1138  0.0345  0.0065  0.1711  * 
+    ## 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+# All R studies (Forest plot)
 df_r %>% 
   rma(
     yi = ES, 
@@ -392,34 +426,70 @@ df_r %>%
 <img src="analysis_files/figure-gfm/unnamed-chunk-5-1.png" width="100%" height="100%" />
 
 ``` r
-# All R studies (RVE)
+# All RR studies (REML)
 df_r %>% 
-  robu(
-    formula = ES ~ 1, 
-    var.eff.size = EV, 
-    studynum = AUTYR,
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
     data = ., 
-    modelweights = "CORR",
-    rho = 0.8
-  ) %>% 
-  sensitivity()
+    method = "REML",
+    slab = AUTYR
+  )
 ```
 
-    ## RVE: Correlated Effects Model with Small-Sample Corrections 
-    ## Model: ES ~ 1 
     ## 
-    ## Sensitivity Analysis 
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ##                           Rho = 0 Rho = 0.2 Rho = 0.4 Rho = 0.6 Rho = 0.8
-    ##  X.Intercept. Coefficient 0.0749  0.0749    0.0749    0.0749    0.0749   
-    ##               Std. Error  0.0345  0.0345    0.0345    0.0345    0.0345   
-    ##  Tau.sq       Estimate    0.0163  0.0163    0.0163    0.0163    0.0163   
-    ##  Rho = 1
-    ##  0.0749 
-    ##  0.0345 
-    ##  0.0163
+    ## tau^2 (estimated amount of total heterogeneity): 0.0866 (SE = 0.0771)
+    ## tau (square root of estimated tau^2 value):      0.2943
+    ## I^2 (total heterogeneity / total variability):   84.88%
+    ## H^2 (total variability / sampling variability):  6.61
+    ## 
+    ## Test for Heterogeneity:
+    ## Q(df = 5) = 28.0725, p-val < .0001
+    ## 
+    ## Model Results:
+    ## 
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.2980  0.1470  2.0272  0.0426  0.0099  0.5860  * 
+    ## 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-#### Moderator effects
+``` r
+# All RS studies (REML)
+df_r %>% 
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  )
+```
+
+    ## 
+    ## Random-Effects Model (k = 21; tau^2 estimator: REML)
+    ## 
+    ## tau^2 (estimated amount of total heterogeneity): 0.0054 (SE = 0.0045)
+    ## tau (square root of estimated tau^2 value):      0.0738
+    ## I^2 (total heterogeneity / total variability):   44.77%
+    ## H^2 (total variability / sampling variability):  1.81
+    ## 
+    ## Test for Heterogeneity:
+    ## Q(df = 20) = 34.9346, p-val = 0.0205
+    ## 
+    ## Model Results:
+    ## 
+    ## estimate      se    zval    pval    ci.lb   ci.ub 
+    ##   0.0395  0.0288  1.3709  0.1704  -0.0170  0.0959    
+    ## 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+### Moderator effects
 
 ``` r
 df_r %>% 
@@ -430,42 +500,65 @@ df_r %>%
   ) %>%
   mutate(
     Hours = Hours %>% parse_number()
-  ) %>% 
-  robu(
-    formula = ES ~ TMULT + WholeCl + SmallGr + Indiv + Duration + TVOC + TMOR + TPAD + TLRC + TDD + TTEC + TSTR, 
-    var.eff.size = EV, 
-    studynum = AUTYR,
+  ) %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
     data = ., 
-    modelweights = "CORR",
-    rho = 0.8
+    method = "REML",
+    slab = AUTYR,
+    mods = ~ factor(TMULT)
   )
 ```
 
-    ## RVE: Correlated Effects Model with Small-Sample Corrections 
     ## 
-    ## Model: ES ~ TMULT + WholeCl + SmallGr + Indiv + Duration + TVOC + TMOR + TPAD + TLRC + TDD + TTEC + TSTR 
+    ## Mixed-Effects Model (k = 27; tau^2 estimator: REML)
     ## 
-    ## Number of studies = 23 
-    ## Number of outcomes = 27 (min = 1 , mean = 1.17 , median = 1 , max = 2 )
-    ## Rho = 0.8 
-    ## I.sq = 72.04371 
-    ## Tau.sq = 0.01920417 
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0291 (SE = 0.0130)
+    ## tau (square root of estimated tau^2 value):             0.1706
+    ## I^2 (residual heterogeneity / unaccounted variability): 80.70%
+    ## H^2 (unaccounted variability / sampling variability):   5.18
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
-    ##                 Estimate StdErr t-value  dfs P(|t|>) 95% CI.L 95% CI.U Sig
-    ## 1  X.Intercept.  0.04837 0.6296  0.0768 2.89   0.944   -1.998    2.095    
-    ## 2         TMULT  0.01944 0.0636  0.3056 1.81   0.791   -0.283    0.322    
-    ## 3       WholeCl -0.02266 0.3718 -0.0610 2.15   0.957   -1.522    1.476    
-    ## 4       SmallGr -0.02729 0.2616 -0.1043 2.66   0.924   -0.924    0.869    
-    ## 5         Indiv -0.20681 0.3331 -0.6209 3.70   0.571   -1.162    0.748    
-    ## 6      Duration -0.10546 0.1311 -0.8046 2.40   0.493   -0.588    0.377    
-    ## 7          TVOC  0.23162 0.3911  0.5922 4.55   0.582   -0.804    1.268    
-    ## 8          TMOR  0.08466 0.3384  0.2502 2.82   0.820   -1.032    1.202    
-    ## 9          TPAD  0.17841 0.1953  0.9135 2.71   0.435   -0.482    0.839    
-    ## 10         TLRC -0.18886 0.1225 -1.5415 2.36   0.244   -0.646    0.269    
-    ## 11          TDD -0.00125 0.3040 -0.0041 2.20   0.997   -1.200    1.197    
-    ## 12         TTEC  0.17191 0.1457  1.1801 2.90   0.326   -0.301    0.644    
-    ## 13         TSTR -0.19332 0.0699 -2.7654 1.73   0.128   -0.543    0.156    
+    ## Test for Residual Heterogeneity:
+    ## QE(df = 25) = 86.3001, p-val < .0001
+    ## 
+    ## Test of Moderators (coefficient 2):
+    ## QM(df = 1) = 0.0214, p-val = 0.8837
+    ## 
+    ## Model Results:
+    ## 
+    ##                 estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt           0.0859  0.0471  1.8250  0.0680  -0.0064  0.1781  . 
+    ## factor(TMULT)1    0.0169  0.1153  0.1463  0.8837  -0.2092  0.2429    
+    ## 
     ## ---
-    ## Signif. codes: < .01 *** < .05 ** < .10 *
-    ## ---
-    ## Note: If df < 4, do not trust the results
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+df_r %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%
+  mutate(
+    Hours = Hours %>% parse_number()
+  ) %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR,
+    mods = ~ factor(TMULT)
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Reading Comprehension",
+    addcred = T, 
+    header = T
+  )
+```
+
+![](analysis_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->

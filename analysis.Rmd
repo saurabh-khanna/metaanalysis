@@ -1,5 +1,5 @@
 ---
-title: "L&L Meta-analysis"
+title: "Metaanalysis Script"
 author: "Saurabh Khanna"
 date: "`r Sys.Date()`"
 output: 
@@ -90,9 +90,9 @@ read_xlsx(data_file, sheet = "RS") %>%
 
 All good!
 
-## Calculate effect sizes
+## R Studies
 
-### R studies
+### Calculate effect sizes
 
 #### Post only
 
@@ -257,14 +257,25 @@ df_r_prepost <-
   )
 ```
 
-Combining all R studies in a single tibble:
+### Synthesizing effect sizes
 
 ```{r, out.width="100%", out.height="100%", fig.asp=1.25}
-df_r <- bind_rows(df_r_post, df_r_prepost)
+# Combining all R studies in a single tibble
+df_r <- bind_rows(df_r_post, df_r_prepost) %>% arrange(type, AUTYR)
 
 df_r %>% knitr::kable()
 
 # All R studies (REML)
+df_r %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  )
+
+# All R studies (Forest plot)
 df_r %>% 
   rma(
     yi = ES, 
@@ -280,22 +291,32 @@ df_r %>%
     header = T
   )
 
-# All R studies (RVE)
+# All RR studies (REML)
 df_r %>% 
-  robu(
-    formula = ES ~ 1, 
-    var.eff.size = EV, 
-    studynum = AUTYR,
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
     data = ., 
-    modelweights = "CORR",
-    rho = 0.8
-  ) %>% 
-  sensitivity()
+    method = "REML",
+    slab = AUTYR
+  )
+
+# All RS studies (REML)
+df_r %>% 
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  )
 ```
 
-#### Moderator effects
+### Moderator effects
 
-```{r}
+```{r, fig.asp=1.25}
 df_r %>% 
   left_join(
     read_xlsx(data_file, sheet = "StudyChar") %>% 
@@ -304,14 +325,38 @@ df_r %>%
   ) %>%
   mutate(
     Hours = Hours %>% parse_number()
-  ) %>% 
-  robu(
-    formula = ES ~ TMULT + WholeCl + SmallGr + Indiv + Duration + TVOC + TMOR + TPAD + TLRC + TDD + TTEC + TSTR, 
-    var.eff.size = EV, 
-    studynum = AUTYR,
+  ) %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
     data = ., 
-    modelweights = "CORR",
-    rho = 0.8
+    method = "REML",
+    slab = AUTYR,
+    mods = ~ factor(TMULT)
+  )
+
+df_r %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%
+  mutate(
+    Hours = Hours %>% parse_number()
+  ) %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR,
+    mods = ~ factor(TMULT)
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Reading Comprehension",
+    addcred = T, 
+    header = T
   )
 ```
 
