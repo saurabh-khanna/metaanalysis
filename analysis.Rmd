@@ -1,5 +1,5 @@
 ---
-title: "L&L Metaanalysis"
+title: "L&L Meta-analysis"
 author: "Saurabh Khanna"
 date: "`r Sys.Date()`"
 output: 
@@ -11,11 +11,12 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r}
 # Libraries
 library(tidyverse)
-library(metafor)
 library(readxl)
+library(metafor)
+library(robumeta)
 
 # Parameters
 data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
@@ -26,7 +27,57 @@ data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
 
 ```{r}
 # join checks
+read_xlsx(data_file, sheet = "VR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "VS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "LR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "LS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
 read_xlsx(data_file, sheet = "RR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "RS") %>% 
   select(AUTYR) %>% 
   drop_na(AUTYR) %>% 
   anti_join(
@@ -43,9 +94,7 @@ All good!
 
 ### R studies
 
-#### RR and RS studies
-
-Post only:
+#### Post only
 
 ```{r}
 df_r_post <-
@@ -102,14 +151,10 @@ df_r_post <-
         ~ mean(c(...), na.rm = TRUE)
       )
   )
-
-# post test only ES
-df_r_post %>%
-  knitr::kable()
 ```
 
 
-Pre and post:
+#### Pre and Post
 
 ```{r}
 df_r_prepost <-
@@ -125,7 +170,7 @@ df_r_prepost <-
   select_if(~ any(!is.na(.))) %>%
   select(AUTYR, type, sort(current_vars()))
 
-# treatment
+# treatment (post-pre)
 for (mt in 1:4) {
   for (mc in 1:4) {
     if (
@@ -148,7 +193,7 @@ for (mt in 1:4) {
   }
 }
 
-# control
+# control (post-pre)
 for (mt in 1:4) {
   for (mc in 1:4) {
     if (
@@ -193,7 +238,6 @@ for (mt in 1:4) {
   }
 }
 
-df_r_prepost %>% select(starts_with("EV"))
 
 df_r_prepost <- 
   df_r_prepost %>% 
@@ -211,20 +255,16 @@ df_r_prepost <-
         ~ mean(c(...), na.rm = TRUE)
       )
   )
-  
-# pre + post test
-df_r_prepost %>%
-  knitr::kable()
 ```
 
-Combining RR in a single tibble:
+Combining all R studies in a single tibble:
 
-```{r, message=F, warning=F, out.width="100%", out.height="100%"}
+```{r, out.width="100%", out.height="100%", fig.asp=1.25}
 df_r <- bind_rows(df_r_post, df_r_prepost)
 
 df_r %>% knitr::kable()
 
-# All R studies
+# All R studies (REML)
 df_r %>% 
   rma(
     yi = ES, 
@@ -240,42 +280,37 @@ df_r %>%
     header = T
   )
 
-# All RR studies
-df_r %>%
-  filter(type == "RR") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
+# All R studies (RVE)
+df_r %>% 
+  robu(
+    formula = ES ~ 1, 
+    var.eff.size = EV, 
+    studynum = AUTYR,
     data = ., 
-    method = "REML",
-    slab = AUTYR
+    modelweights = "CORR",
+    rho = 0.8
   ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Reading Comprehension (Custom measure)",
-    addcred = T, 
-    header = T
-  )
-
-# All RS studies
-df_r %>%
-  filter(type == "RS") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Reading Comprehension (Standardized measure)",
-    addcred = T, 
-    header = T
-  )
+  sensitivity()
 ```
 
+#### Moderator effects
+
+```{r}
+df_r %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%  
+  robu(
+    formula = ES ~ factor(TVOC), 
+    var.eff.size = EV, 
+    studynum = AUTYR,
+    data = ., 
+    modelweights = "CORR",
+    rho = 0.8
+  )
 
 
-
+```
 
