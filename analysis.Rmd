@@ -301,16 +301,17 @@ df_r %>%
     read_xlsx(data_file, sheet = "StudyChar") %>% 
       drop_na(AUTYR),
     by = "AUTYR"
-  ) %>%  
+  ) %>%
+  mutate(
+    Hours = Hours %>% parse_number()
+  ) %>% 
   robu(
-    formula = ES ~ factor(TVOC), 
+    formula = ES ~ TMULT + WholeCl + SmallGr + Indiv + Duration + TVOC + TMOR + TPAD + TLRC + TDD + TTEC + TSTR, 
     var.eff.size = EV, 
     studynum = AUTYR,
     data = ., 
     modelweights = "CORR",
     rho = 0.8
   )
-
-
 ```
 

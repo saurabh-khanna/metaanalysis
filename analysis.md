@@ -1,7 +1,7 @@
-L\&L Metaanalysis
+L\&L Meta-analysis
 ================
 Saurabh Khanna
-2020-04-08
+2020-04-10
 
   - [Reading in data](#reading-in-data)
   - [Calculate effect sizes](#calculate-effect-sizes)
@@ -12,14 +12,14 @@ Saurabh Khanna
 library(tidyverse)
 ```
 
-    ## ── Attaching packages ──────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+    ## ── Attaching packages ─────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
 
     ## ✓ ggplot2 3.3.0     ✓ purrr   0.3.3
     ## ✓ tibble  3.0.0     ✓ dplyr   0.8.5
     ## ✓ tidyr   1.0.2     ✓ stringr 1.4.0
     ## ✓ readr   1.3.1     ✓ forcats 0.5.0
 
-    ## ── Conflicts ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+    ## ── Conflicts ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
     ## x dplyr::filter() masks stats::filter()
     ## x dplyr::lag()    masks stats::lag()
 
@@ -51,6 +51,66 @@ data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
 
 ``` r
 # join checks
+read_xlsx(data_file, sheet = "VR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+```
+
+    ## # A tibble: 0 x 1
+    ## # … with 1 variable: AUTYR <chr>
+
+``` r
+read_xlsx(data_file, sheet = "VS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+```
+
+    ## # A tibble: 0 x 1
+    ## # … with 1 variable: AUTYR <chr>
+
+``` r
+read_xlsx(data_file, sheet = "LR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+```
+
+    ## # A tibble: 0 x 1
+    ## # … with 1 variable: AUTYR <chr>
+
+``` r
+read_xlsx(data_file, sheet = "LS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+```
+
+    ## # A tibble: 0 x 1
+    ## # … with 1 variable: AUTYR <chr>
+
+``` r
 read_xlsx(data_file, sheet = "RR") %>% 
   select(AUTYR) %>% 
   drop_na(AUTYR) %>% 
@@ -61,6 +121,27 @@ read_xlsx(data_file, sheet = "RR") %>%
     by = "AUTYR"
   )
 ```
+
+    ## # A tibble: 0 x 1
+    ## # … with 1 variable: AUTYR <chr>
+
+``` r
+read_xlsx(data_file, sheet = "RS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+```
+
+    ## New names:
+    ## * TSRS1delay -> TSRS1delay...8
+    ## * TSRS1delay -> TSRS1delay...9
+    ## * TSRS2delay -> TSRS2delay...24
+    ## * TSRS2delay -> TSRS2delay...25
 
     ## # A tibble: 0 x 1
     ## # … with 1 variable: AUTYR <chr>
@@ -165,7 +246,7 @@ df_r_prepost <-
     ## * TSRS2delay -> TSRS2delay...25
 
 ``` r
-# treatment
+# treatment (post-pre)
 for (mt in 1:4) {
   for (mc in 1:4) {
     if (
@@ -188,7 +269,7 @@ for (mt in 1:4) {
   }
 }
 
-# control
+# control (post-pre)
 for (mt in 1:4) {
   for (mc in 1:4) {
     if (
@@ -264,10 +345,10 @@ df_r %>% knitr::kable()
 | :--------------- | :--: | ----------: | --------: |
 | Dalton11\_V      |  RR  |   0.0995073 | 0.0543501 |
 | Dalton11\_VC     |  RR  |   0.1255728 | 0.0579221 |
-| Connor18\_3\_COM |  RS  | \-0.1074613 | 0.0207957 |
-| Connor18\_3\_ERC |  RS  | \-0.1103352 | 0.0201836 |
-| Connor18\_3\_LIM |  RS  | \-0.1118355 | 0.0198132 |
-| Connor18\_4\_ERC |  RS  |   0.0901937 | 0.0179108 |
+| Connor18\_3\_COM |  RS  |   0.0074417 | 0.0208056 |
+| Connor18\_3\_ERC |  RS  | \-0.0044229 | 0.0201864 |
+| Connor18\_3\_LIM |  RS  | \-0.0039575 | 0.0198170 |
+| Connor18\_4\_ERC |  RS  | \-0.0055516 | 0.0179116 |
 | Dalton11\_V      |  RS  |   0.0289196 | 0.0540992 |
 | Dalton11\_VC     |  RS  |   0.0059258 | 0.0575660 |
 | Berry13          |  RR  | \-0.3571446 | 1.2383362 |
@@ -312,7 +393,7 @@ df_r %>%
 
 ``` r
 # All R studies (RVE)
-df_r %>%
+df_r %>% 
   robu(
     formula = ES ~ 1, 
     var.eff.size = EV, 
@@ -330,10 +411,61 @@ df_r %>%
     ## Sensitivity Analysis 
     ## 
     ##                           Rho = 0 Rho = 0.2 Rho = 0.4 Rho = 0.6 Rho = 0.8
-    ##  X.Intercept. Coefficient 0.0653  0.0653    0.0653    0.0653    0.0653   
-    ##               Std. Error  0.0365  0.0365    0.0365    0.0365    0.0365   
-    ##  Tau.sq       Estimate    0.0178  0.0178    0.0178    0.0178    0.0178   
+    ##  X.Intercept. Coefficient 0.0749  0.0749    0.0749    0.0749    0.0749   
+    ##               Std. Error  0.0345  0.0345    0.0345    0.0345    0.0345   
+    ##  Tau.sq       Estimate    0.0163  0.0163    0.0163    0.0163    0.0163   
     ##  Rho = 1
-    ##  0.0653 
-    ##  0.0365 
-    ##  0.0178
+    ##  0.0749 
+    ##  0.0345 
+    ##  0.0163
+
+#### Moderator effects
+
+``` r
+df_r %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%
+  mutate(
+    Hours = Hours %>% parse_number()
+  ) %>% 
+  robu(
+    formula = ES ~ TMULT + WholeCl + SmallGr + Indiv + Duration + TVOC + TMOR + TPAD + TLRC + TDD + TTEC + TSTR, 
+    var.eff.size = EV, 
+    studynum = AUTYR,
+    data = ., 
+    modelweights = "CORR",
+    rho = 0.8
+  )
+```
+
+    ## RVE: Correlated Effects Model with Small-Sample Corrections 
+    ## 
+    ## Model: ES ~ TMULT + WholeCl + SmallGr + Indiv + Duration + TVOC + TMOR + TPAD + TLRC + TDD + TTEC + TSTR 
+    ## 
+    ## Number of studies = 23 
+    ## Number of outcomes = 27 (min = 1 , mean = 1.17 , median = 1 , max = 2 )
+    ## Rho = 0.8 
+    ## I.sq = 72.04371 
+    ## Tau.sq = 0.01920417 
+    ## 
+    ##                 Estimate StdErr t-value  dfs P(|t|>) 95% CI.L 95% CI.U Sig
+    ## 1  X.Intercept.  0.04837 0.6296  0.0768 2.89   0.944   -1.998    2.095    
+    ## 2         TMULT  0.01944 0.0636  0.3056 1.81   0.791   -0.283    0.322    
+    ## 3       WholeCl -0.02266 0.3718 -0.0610 2.15   0.957   -1.522    1.476    
+    ## 4       SmallGr -0.02729 0.2616 -0.1043 2.66   0.924   -0.924    0.869    
+    ## 5         Indiv -0.20681 0.3331 -0.6209 3.70   0.571   -1.162    0.748    
+    ## 6      Duration -0.10546 0.1311 -0.8046 2.40   0.493   -0.588    0.377    
+    ## 7          TVOC  0.23162 0.3911  0.5922 4.55   0.582   -0.804    1.268    
+    ## 8          TMOR  0.08466 0.3384  0.2502 2.82   0.820   -1.032    1.202    
+    ## 9          TPAD  0.17841 0.1953  0.9135 2.71   0.435   -0.482    0.839    
+    ## 10         TLRC -0.18886 0.1225 -1.5415 2.36   0.244   -0.646    0.269    
+    ## 11          TDD -0.00125 0.3040 -0.0041 2.20   0.997   -1.200    1.197    
+    ## 12         TTEC  0.17191 0.1457  1.1801 2.90   0.326   -0.301    0.644    
+    ## 13         TSTR -0.19332 0.0699 -2.7654 1.73   0.128   -0.543    0.156    
+    ## ---
+    ## Signif. codes: < .01 *** < .05 ** < .10 *
+    ## ---
+    ## Note: If df < 4, do not trust the results
