@@ -8,6 +8,9 @@ Saurabh Khanna
       - [Calculate effect sizes](#calculate-effect-sizes)
       - [Synthesizing effect sizes](#synthesizing-effect-sizes)
       - [Moderator effects](#moderator-effects)
+  - [L Studies](#l-studies)
+      - [Calculate effect sizes](#calculate-effect-sizes-1)
+      - [Synthesizing effect sizes](#synthesizing-effect-sizes-1)
 
 ``` r
 # Libraries
@@ -562,3 +565,226 @@ df_r %>%
 ```
 
 ![](analysis_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+## L Studies
+
+### Calculate effect sizes
+
+#### Post only
+
+``` r
+df_l_post <-
+  read_xlsx(data_file, sheet = "LR") %>% 
+  rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")) %>%
+  bind_rows(
+    "LR" = .,
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(is.na(TM1pre)) %>% 
+  select_if(~ any(!is.na(.))) %>%
+  select(AUTYR, type, sort(current_vars()))
+
+
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("TM{mt}post") %in% colnames(df_l_post)) | 
+      !(str_glue("CM{mc}post") %in% colnames(df_l_post))
+    ) {
+      next
+    }
+    df_l_post <-
+      escalc(
+        data = df_l_post,
+        measure = "SMD",
+        m1i = df_l_post[, str_c("TM", mt, "post")] %>% unlist(),
+        m2i = df_l_post[, str_c("CM", mc, "post")] %>% unlist(),
+        sd1i = df_l_post[, str_c("TS", mt, "post")] %>% unlist(),
+        sd2i = df_l_post[, str_c("CM", mc, "post")] %>% unlist(),
+        n1i = df_l_post[, str_c("TN", mt, "post")] %>% unlist(),
+        n2i = df_l_post[, str_c("CN", mc, "post")] %>% unlist(),
+        var.names = c(str_glue("ES_TM{mt}_CM{mc}"), str_glue("EV_TM{mt}_CM{mc}"))
+      ) 
+  }
+}
+
+
+df_l_post <-
+  df_l_post %>% 
+  transmute(
+    AUTYR, 
+    type,
+    ES =
+      pmap_dbl(
+        select(., starts_with("ES_")),
+        ~ mean(c(...), na.rm = TRUE)
+      ),
+    EV =
+      pmap_dbl(
+        select(., starts_with("EV_")),
+        ~ mean(c(...), na.rm = TRUE)
+      )
+  )
+```
+
+#### Pre and Post
+
+``` r
+df_l_prepost <-
+  read_xlsx(data_file, sheet = "LR") %>% 
+  rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")) %>%
+  bind_rows(
+    "LR" = .,
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(!is.na(TM1pre)) %>% 
+  select_if(~ any(!is.na(.))) %>%
+  select(AUTYR, type, sort(current_vars()))
+
+# treatment (post-pre)
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("TM{mt}post") %in% colnames(df_l_prepost)) | 
+      !(str_glue("TM{mt}pre") %in% colnames(df_l_prepost))
+    ) {
+      next
+    }
+    df_l_prepost <-
+      escalc(
+        data = df_l_prepost,
+        measure = "SMCR",
+        m1i = df_l_prepost[, str_c("TM", mt, "post")] %>% unlist(),
+        m2i = df_l_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
+        sd1i = df_l_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
+        ni = df_l_prepost[, str_c("TN", mt, "post")] %>% unlist(),
+        ri = rep(0.7, 6),
+        var.names = c(str_glue("TES_TM{mt}_CM{mc}"), str_glue("TEV_TM{mt}_CM{mc}"))
+      ) 
+  }
+}
+
+# control (post-pre)
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("CM{mc}post") %in% colnames(df_l_prepost)) | 
+      !(str_glue("CM{mc}pre") %in% colnames(df_l_prepost))
+    ) {
+      next
+    }
+    df_l_prepost <-
+      escalc(
+        data = df_l_prepost,
+        measure = "SMCR",
+        m1i = df_l_prepost[, str_c("CM", mc, "post")] %>% unlist(),
+        m2i = df_l_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
+        sd1i = df_l_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
+        ni = df_l_prepost[, str_c("CN", mc, "post")] %>% unlist(),
+        ri = rep(0.7, 6),
+        var.names = c(str_glue("CES_TM{mt}_CM{mc}"), str_glue("CEV_TM{mt}_CM{mc}"))
+      ) 
+  }
+}
+
+# ES and EV taken together
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("TES_TM{mt}_CM{mc}") %in% colnames(df_l_prepost)) | 
+      !(str_glue("TEV_TM{mt}_CM{mc}") %in% colnames(df_l_prepost)) |
+      !(str_glue("CES_TM{mt}_CM{mc}") %in% colnames(df_l_prepost)) | 
+      !(str_glue("CEV_TM{mt}_CM{mc}") %in% colnames(df_l_prepost))
+    ) {
+      next
+    }
+    # subtracting effect size
+    df_l_prepost[, str_c("ES_TM", mt, "_CM", mc)] <- 
+      (df_l_prepost[, str_c("TES_TM", mt, "_CM", mc)] %>% unlist()) -
+      (df_l_prepost[, str_c("CES_TM", mt, "_CM", mc)] %>% unlist())
+    # adding variance
+    df_l_prepost[, str_c("EV_TM", mt, "_CM", mc)] <- 
+      (df_l_prepost[, str_c("TEV_TM", mt, "_CM", mc)] %>% unlist()) +
+      (df_l_prepost[, str_c("CEV_TM", mt, "_CM", mc)] %>% unlist())
+  }
+}
+
+
+df_l_prepost <- 
+  df_l_prepost %>% 
+  transmute(
+    AUTYR, 
+    type,
+    ES =
+      pmap_dbl(
+        select(., starts_with("ES_")),
+        ~ mean(c(...), na.rm = TRUE)
+      ),
+    EV =
+      pmap_dbl(
+        select(., starts_with("EV_")),
+        ~ mean(c(...), na.rm = TRUE)
+      )
+  )
+```
+
+### Synthesizing effect sizes
+
+``` r
+# Combining all R studies in a single tibble
+df_l <- bind_rows(df_l_post, df_l_prepost) %>% arrange(type, AUTYR)
+
+df_l %>% knitr::kable()
+
+# All R studies (REML)
+df_l %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  )
+
+# All R studies (Forest plot)
+df_l %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Reading Comprehension",
+    addcred = T, 
+    header = T
+  )
+
+# All RR studies (REML)
+df_l %>% 
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  )
+
+# All RS studies (REML)
+df_l %>% 
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = AUTYR
+  )
+```
