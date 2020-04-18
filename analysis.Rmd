@@ -321,7 +321,7 @@ rm(df_post, df_prepost)
 
 ### Vocabulary
 
-```{r, out.width="100%", out.height="100%", fig.asp=1.5}
+```{r, out.width="100%", out.height="100%", fig.asp=2}
 robu(
   formula = ES ~ 1, 
   var.eff.size = EV, 
