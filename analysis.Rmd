@@ -289,7 +289,8 @@ df_clean <-
     Hours = Hours %>% parse_number()
   ) %>% 
   mutate_at(vars(type, CONT), as.factor) %>% 
-  arrange(type, AUTYR)
+  arrange(type, AUTYR) %>% 
+  mutate_at(vars(case), replace_na, replace = "Default")
 
 df_clean %>% knitr::kable()
 ```
