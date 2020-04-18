@@ -7,8 +7,7 @@ library(robumeta)
 
 #### Load dataset ####
 
-dat_BAI <- read.csv("/home/saurabh/Everything/PhD/Workshops/Meta Analysis Course/my_analysis/BAIforYouth.csv", header = T)
-df <- read_csv("/home/saurabh/Everything/PhD/Workshops/Meta Analysis Course/my_analysis/rebecca_template.csv")
+dat_BAI <- read.csv("/home/saurabh/Everything/PhD/Workshops/Meta Analysis Course/data/BAIforYouth.csv", header = T)
 
 #### Calculate effect sizes using metafor ####
 

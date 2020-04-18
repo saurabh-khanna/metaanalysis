@@ -12,7 +12,7 @@
 #dat_BAI <- BAIforYouth #Renames the dataset (as well as creating a new dataset with this name)
 #View(dat_BAI) # This function allows you to see the dataset in R
 
-dat_BAI <- read.csv("/home/saurabh/Everything/PhD/Workshops/Meta Analysis Course/BAIforYouth.csv", header = T)
+dat_BAI <- read.csv("/home/saurabh/Everything/PhD/Workshops/Meta Analysis Course/data/BAIforYouth.csv", header = T)
 View(dat_BAI) # This function allows you to see the dataset in R
 
 #### Load packages ####

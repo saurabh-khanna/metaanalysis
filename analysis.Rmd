@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 
 ```{r}
@@ -20,7 +20,6 @@ library(robumeta)
 
 # Parameters
 data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
-
 ```
 
 ## Reading in data
@@ -90,19 +89,25 @@ read_xlsx(data_file, sheet = "RS") %>%
 
 All good!
 
-## R Studies
 
-### Calculate effect sizes
+## Calculate effect sizes
 
-#### Post only
+### Post only
 
 ```{r}
-df_r_post <-
-  read_xlsx(data_file, sheet = "RR") %>% 
-  rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")) %>%
+df_post <-
   bind_rows(
-    "RR" = .,
+    "VR" = read_xlsx(data_file, sheet = "VR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VR", "")),
+    "VS" = read_xlsx(data_file, sheet = "VS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VS", "")),
+    "RR" = read_xlsx(data_file, sheet = "RR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")),
     "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
+    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
+    "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
   ) %>% 
   drop_na(AUTYR) %>%
@@ -114,29 +119,29 @@ df_r_post <-
 for (mt in 1:4) {
   for (mc in 1:4) {
     if (
-      !(str_glue("TM{mt}post") %in% colnames(df_r_post)) | 
-      !(str_glue("CM{mc}post") %in% colnames(df_r_post))
+      !(str_glue("TM{mt}post") %in% colnames(df_post)) | 
+      !(str_glue("CM{mc}post") %in% colnames(df_post))
     ) {
       next
     }
-    df_r_post <-
+    df_post <-
       escalc(
-        data = df_r_post,
+        data = df_post,
         measure = "SMD",
-        m1i = df_r_post[, str_c("TM", mt, "post")] %>% unlist(),
-        m2i = df_r_post[, str_c("CM", mc, "post")] %>% unlist(),
-        sd1i = df_r_post[, str_c("TS", mt, "post")] %>% unlist(),
-        sd2i = df_r_post[, str_c("CM", mc, "post")] %>% unlist(),
-        n1i = df_r_post[, str_c("TN", mt, "post")] %>% unlist(),
-        n2i = df_r_post[, str_c("CN", mc, "post")] %>% unlist(),
+        m1i = df_post[, str_c("TM", mt, "post")] %>% unlist(),
+        m2i = df_post[, str_c("CM", mc, "post")] %>% unlist(),
+        sd1i = df_post[, str_c("TS", mt, "post")] %>% unlist(),
+        sd2i = df_post[, str_c("CS", mc, "post")] %>% unlist(),
+        n1i = df_post[, str_c("TN", mt, "post")] %>% unlist(),
+        n2i = df_post[, str_c("CN", mc, "post")] %>% unlist(),
         var.names = c(str_glue("ES_TM{mt}_CM{mc}"), str_glue("EV_TM{mt}_CM{mc}"))
       ) 
   }
 }
 
 
-df_r_post <-
-  df_r_post %>% 
+df_post <-
+  df_post %>% 
   transmute(
     AUTYR, 
     type,
@@ -154,93 +159,103 @@ df_r_post <-
 ```
 
 
-#### Pre and Post
+### Pre and Post
 
 ```{r}
-df_r_prepost <-
-  read_xlsx(data_file, sheet = "RR") %>% 
-  rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")) %>%
+df_prepost <-
   bind_rows(
-    "RR" = .,
+    "VR" = read_xlsx(data_file, sheet = "VR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VR", "")),
+    "VS" = read_xlsx(data_file, sheet = "VS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VS", "")),
+    "RR" = read_xlsx(data_file, sheet = "RR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")),
     "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
+    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
+    "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
   ) %>% 
   drop_na(AUTYR) %>%
   filter(!is.na(TM1pre)) %>% 
   select_if(~ any(!is.na(.))) %>%
-  select(AUTYR, type, sort(current_vars()))
+  select(AUTYR, type, sort(current_vars())) %>% 
+  mutate(
+    TN1post = if_else(is.na(TN1post) & !is.na(TN1pre), TN1pre, TN1post),
+    TN2post = if_else(is.na(TN2post) & !is.na(TN2pre), TN2pre, TN2post),
+    CN1post = if_else(is.na(CN1post) & !is.na(CN1pre), CN1pre, CN1post),
+    CN2post = if_else(is.na(CN2post) & !is.na(CN2pre), CN2pre, CN2post)
+  )
+
+#df_prepost %>% select(type, contains(c("N1p", "N2p"))) %>% summary()
 
 # treatment (post-pre)
 for (mt in 1:4) {
-  for (mc in 1:4) {
-    if (
-      !(str_glue("TM{mt}post") %in% colnames(df_r_prepost)) | 
-      !(str_glue("TM{mt}pre") %in% colnames(df_r_prepost))
-    ) {
-      next
-    }
-    df_r_prepost <-
-      escalc(
-        data = df_r_prepost,
-        measure = "SMCR",
-        m1i = df_r_prepost[, str_c("TM", mt, "post")] %>% unlist(),
-        m2i = df_r_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
-        sd1i = df_r_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
-        ni = df_r_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-        ri = rep(0.7, 19),
-        var.names = c(str_glue("TES_TM{mt}_CM{mc}"), str_glue("TEV_TM{mt}_CM{mc}"))
-      ) 
+  if (
+    !(str_glue("TM{mt}post") %in% colnames(df_prepost)) | 
+    !(str_glue("TM{mt}pre") %in% colnames(df_prepost))
+  ) {
+    next
   }
+  df_prepost <-
+    escalc(
+      data = df_prepost,
+      measure = "SMCR",
+      m1i = df_prepost[, str_c("TM", mt, "post")] %>% unlist(),
+      m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
+      sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
+      ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
+      ri = rep(0.5, 95),
+      var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
+    ) 
 }
 
 # control (post-pre)
-for (mt in 1:4) {
-  for (mc in 1:4) {
-    if (
-      !(str_glue("CM{mc}post") %in% colnames(df_r_prepost)) | 
-      !(str_glue("CM{mc}pre") %in% colnames(df_r_prepost))
-    ) {
-      next
-    }
-    df_r_prepost <-
-      escalc(
-        data = df_r_prepost,
-        measure = "SMCR",
-        m1i = df_r_prepost[, str_c("CM", mc, "post")] %>% unlist(),
-        m2i = df_r_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
-        sd1i = df_r_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
-        ni = df_r_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-        ri = rep(0.7, 19),
-        var.names = c(str_glue("CES_TM{mt}_CM{mc}"), str_glue("CEV_TM{mt}_CM{mc}"))
-      ) 
+for (mc in 1:4) {
+  if (
+    !(str_glue("CM{mc}post") %in% colnames(df_prepost)) | 
+    !(str_glue("CM{mc}pre") %in% colnames(df_prepost))
+  ) {
+    next
   }
+  df_prepost <-
+    escalc(
+      data = df_prepost,
+      measure = "SMCR",
+      m1i = df_prepost[, str_c("CM", mc, "post")] %>% unlist(),
+      m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
+      sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
+      ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
+      ri = rep(0.5, 95),
+      var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
+    ) 
 }
+
 
 # ES and EV taken together
-for (mt in 1:4) {
-  for (mc in 1:4) {
-    if (
-      !(str_glue("TES_TM{mt}_CM{mc}") %in% colnames(df_r_prepost)) | 
-      !(str_glue("TEV_TM{mt}_CM{mc}") %in% colnames(df_r_prepost)) |
-      !(str_glue("CES_TM{mt}_CM{mc}") %in% colnames(df_r_prepost)) | 
-      !(str_glue("CEV_TM{mt}_CM{mc}") %in% colnames(df_r_prepost))
-    ) {
-      next
-    }
-    # subtracting effect size
-    df_r_prepost[, str_c("ES_TM", mt, "_CM", mc)] <- 
-      (df_r_prepost[, str_c("TES_TM", mt, "_CM", mc)] %>% unlist()) -
-      (df_r_prepost[, str_c("CES_TM", mt, "_CM", mc)] %>% unlist())
-    # adding variance
-    df_r_prepost[, str_c("EV_TM", mt, "_CM", mc)] <- 
-      (df_r_prepost[, str_c("TEV_TM", mt, "_CM", mc)] %>% unlist()) +
-      (df_r_prepost[, str_c("CEV_TM", mt, "_CM", mc)] %>% unlist())
+for (m in 1:4) {
+  if (
+    !(str_glue("TES_TM{m}") %in% colnames(df_prepost)) | 
+    !(str_glue("TEV_TM{m}") %in% colnames(df_prepost)) |
+    !(str_glue("CES_CM{m}") %in% colnames(df_prepost)) | 
+    !(str_glue("CEV_CM{m}") %in% colnames(df_prepost))
+  ) {
+    next
   }
+  # subtracting effect size
+  df_prepost[, str_c("ES_TM", m, "_CM", m)] <- 
+    (df_prepost[, str_c("TES_TM", m)] %>% unlist()) -
+    (df_prepost[, str_c("CES_CM", m)] %>% unlist())
+  # adding variance
+  df_prepost[, str_c("EV_TM", m, "_CM", m)] <- 
+    (df_prepost[, str_c("TEV_TM", m)] %>% unlist()) +
+    (df_prepost[, str_c("CEV_CM", m)] %>% unlist())
 }
 
 
-df_r_prepost <- 
-  df_r_prepost %>% 
+df_prepost <- 
+  df_prepost %>% 
   transmute(
     AUTYR, 
     type,
@@ -257,67 +272,14 @@ df_r_prepost <-
   )
 ```
 
-### Synthesizing effect sizes
 
-```{r, out.width="100%", out.height="100%", fig.asp=1.25}
-# Combining all R studies in a single tibble
-df_r <- bind_rows(df_r_post, df_r_prepost) %>% arrange(type, AUTYR)
+### Combining pre and prepost
 
-df_r %>% knitr::kable()
-
-# All R studies (REML)
-df_r %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  )
-
-# All R studies (Forest plot)
-df_r %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Reading Comprehension",
-    addcred = T, 
-    header = T
-  )
-
-# All RR studies (REML)
-df_r %>% 
-  filter(type == "RR") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  )
-
-# All RS studies (REML)
-df_r %>% 
-  filter(type == "RS") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  )
-```
-
-### Moderator effects
-
-```{r, fig.asp=1.25}
-df_r %>% 
+```{r}
+df_clean <- 
+  bind_rows(df_post, df_prepost) %>% 
+  arrange(type, AUTYR) %>% 
+  separate(AUTYR, c("stdid", "case"), remove = F, extra = "merge") %>% 
   left_join(
     read_xlsx(data_file, sheet = "StudyChar") %>% 
       drop_na(AUTYR),
@@ -325,264 +287,447 @@ df_r %>%
   ) %>%
   mutate(
     Hours = Hours %>% parse_number()
-  ) %>%
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR,
-    mods = ~ factor(TMULT)
-  )
+  ) %>% 
+  mutate_at(vars(type, CONT), as.factor) %>% 
+  arrange(type, AUTYR)
 
+df_clean %>% knitr::kable()
+```
+
+### Summary stats
+
+```{r}
+df_clean %>% count(AUTYR) %>% count()
+
+df_clean %>% count(stdid) %>% count()
+
+df_clean %>% 
+  group_by(type) %>%
+  summarize(n = n_distinct(stdid))
+
+
+df_v <- df_clean %>% filter(type %in% c("VR", "VS"))
+df_l <- df_clean %>% filter(type %in% c("LR", "LS"))
+df_r <- df_clean %>% filter(type %in% c("RR", "RS"))
+df_m <- df_clean %>% filter(type %in% c("MR", "MS"))
+df_s <- df_clean %>% filter(type %in% c("SR", "SS"))
+df_a <- df_clean %>% filter(type == "AS")
+
+rm(df_post, df_prepost)
+```
+
+
+## Synthesizing effect sizes
+
+### Vocabulary
+
+```{r, out.width="100%", out.height="100%", fig.asp=1.5}
+robu(
+  formula = ES ~ 1, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_v, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+
+rma(
+  yi = ES, 
+  vi = EV, 
+  data = df_v, 
+  method = "REML",
+  slab = AUTYR
+) %>% 
+  forest(
+    order = "obs",
+    xlab = "Vocabulary",
+    addcred = T, 
+    header = T
+  )
+```
+
+
+### Listening Comprehension
+
+```{r, out.width="100%", out.height="100%", fig.asp=1}
+robu(
+  formula = ES ~ 1, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_l, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+
+rma(
+  yi = ES, 
+  vi = EV, 
+  data = df_l, 
+  method = "REML",
+  slab = AUTYR
+) %>% 
+  forest(
+    order = "obs",
+    xlab = "Listening Comprehension",
+    addcred = T, 
+    header = T
+  )
+```
+
+
+### Reading Comprehension
+
+```{r, out.width="100%", out.height="100%", fig.asp=1}
+robu(
+  formula = ES ~ 1, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_r, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+
+rma(
+  yi = ES, 
+  vi = EV, 
+  data = df_r, 
+  method = "REML",
+  slab = AUTYR
+) %>% 
+  forest(
+    order = "obs",
+    xlab = "Reading Comprehension",
+    addcred = T, 
+    header = T
+  )
+```
+
+
+### Morphology
+
+```{r}
+robu(
+  formula = ES ~ 1, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_m, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+
+rma(
+  yi = ES, 
+  vi = EV, 
+  data = df_m, 
+  method = "REML",
+  slab = AUTYR
+) %>% 
+  forest(
+    order = "obs",
+    xlab = "Morphology",
+    addcred = T, 
+    header = T
+  )
+```
+
+
+### Syntax
+
+```{r}
+# robu(
+#   formula = ES ~ 1, 
+#   var.eff.size = EV, 
+#   studynum = stdid,
+#   data = df_s, 
+#   modelweights = "CORR",
+#   rho = 0.5
+# )
+#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+
+rma(
+  yi = ES, 
+  vi = EV, 
+  data = df_s, 
+  method = "REML",
+  slab = AUTYR
+) %>% 
+  forest(
+    order = "obs",
+    xlab = "Syntax",
+    addcred = T, 
+    header = T
+  )
+```
+
+
+### AS Studies
+
+```{r}
+robu(
+  formula = ES ~ 1, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_a, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+
+rma(
+  yi = ES, 
+  vi = EV, 
+  data = df_a, 
+  method = "REML",
+  slab = AUTYR
+) %>% 
+  forest(
+    order = "obs",
+    xlab = "AS Studies",
+    addcred = T, 
+    header = T
+  )
+```
+
+
+
+
+## Moderator effects
+
+### Vocabulary 
+
+Checking variable correlations:
+
+```{r, fig.asp = 1}
+p.mat <- ggcorrplot::cor_pmat(df_v %>% select(TMULT:TSTR, GradeK:Hours))
+df_v %>% 
+  select(TMULT:TSTR, GradeK:Hours) %>% 
+  cor() %>% 
+  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
+```
+
+
+Meta-regressions:
+
+```{r}
+# Custom vs Std
+robu(
+  formula = ES ~ type, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_v, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Single vs Multiple
+robu(
+  formula = ES ~ TMULT, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_v, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Hours
+robu(
+  formula = ES ~ scale(Hours), 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_v, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Control group
+robu(
+  formula = ES ~ factor(CONT), 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_v, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Design
+robu(
+  formula = ES ~ RCT + WSD, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_v, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Grade
+robu(
+  formula = ES ~ GradeK + Grade1 + Grade2 + Grade3 + Grade4, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_v, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+```
+
+
+### Listening Comprehension 
+
+Checking variable correlations:
+
+```{r, fig.asp = 1}
+p.mat <- ggcorrplot::cor_pmat(df_l %>% select(TMULT:TSTR, GradeK:Hours))
+df_l %>% 
+  select(TMULT:TSTR, GradeK:Hours) %>% 
+  cor() %>% 
+  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
+```
+
+
+Meta-regressions:
+
+```{r}
+# Custom vs Std
+robu(
+  formula = ES ~ type, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_l, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Single vs Multiple
+robu(
+  formula = ES ~ TMULT, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_l, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Hours
+robu(
+  formula = ES ~ scale(Hours), 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_l, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Control group
+robu(
+  formula = ES ~ factor(CONT), 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_l, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Design
+robu(
+  formula = ES ~ RCT, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_l, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Grade
+robu(
+  formula = ES ~ GradeK + Grade1 + Grade2 + Grade3 + Grade4, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_l, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+```
+
+
+### Reading Comprehension 
+
+Checking variable correlations:
+
+```{r, fig.asp = 1}
+p.mat <- ggcorrplot::cor_pmat(df_r %>% select(TMULT:TSTR, GradeK:Hours))
 df_r %>% 
-  left_join(
-    read_xlsx(data_file, sheet = "StudyChar") %>% 
-      drop_na(AUTYR),
-    by = "AUTYR"
-  ) %>%
-  mutate(
-    Hours = Hours %>% parse_number()
-  ) %>%
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR,
-    mods = ~ factor(TMULT)
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Reading Comprehension",
-    addcred = T, 
-    header = T
-  )
+  select(TMULT:TSTR, GradeK:Hours) %>% 
+  cor() %>% 
+  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
 ```
 
 
-
-## L Studies
-
-### Calculate effect sizes
-
-#### Post only
+Meta-regressions:
 
 ```{r}
-df_l_post <-
-  read_xlsx(data_file, sheet = "LR") %>% 
-  rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")) %>%
-  bind_rows(
-    "LR" = .,
-    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
-    .id = "type"
-  ) %>% 
-  drop_na(AUTYR) %>%
-  filter(is.na(TM1pre)) %>% 
-  select_if(~ any(!is.na(.))) %>%
-  select(AUTYR, type, sort(current_vars()))
+# Custom vs Std
+robu(
+  formula = ES ~ type, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_r, 
+  modelweights = "CORR",
+  rho = 0.5
+)
 
+# Single vs Multiple
+robu(
+  formula = ES ~ TMULT, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_r, 
+  modelweights = "CORR",
+  rho = 0.5
+)
 
-for (mt in 1:4) {
-  for (mc in 1:4) {
-    if (
-      !(str_glue("TM{mt}post") %in% colnames(df_l_post)) | 
-      !(str_glue("CM{mc}post") %in% colnames(df_l_post))
-    ) {
-      next
-    }
-    df_l_post <-
-      escalc(
-        data = df_l_post,
-        measure = "SMD",
-        m1i = df_l_post[, str_c("TM", mt, "post")] %>% unlist(),
-        m2i = df_l_post[, str_c("CM", mc, "post")] %>% unlist(),
-        sd1i = df_l_post[, str_c("TS", mt, "post")] %>% unlist(),
-        sd2i = df_l_post[, str_c("CM", mc, "post")] %>% unlist(),
-        n1i = df_l_post[, str_c("TN", mt, "post")] %>% unlist(),
-        n2i = df_l_post[, str_c("CN", mc, "post")] %>% unlist(),
-        var.names = c(str_glue("ES_TM{mt}_CM{mc}"), str_glue("EV_TM{mt}_CM{mc}"))
-      ) 
-  }
-}
+# Hours
+robu(
+  formula = ES ~ scale(Hours), 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_r, 
+  modelweights = "CORR",
+  rho = 0.5
+)
 
+# Control group
+robu(
+  formula = ES ~ factor(CONT), 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_r, 
+  modelweights = "CORR",
+  rho = 0.5
+)
 
-df_l_post <-
-  df_l_post %>% 
-  transmute(
-    AUTYR, 
-    type,
-    ES =
-      pmap_dbl(
-        select(., starts_with("ES_")),
-        ~ mean(c(...), na.rm = TRUE)
-      ),
-    EV =
-      pmap_dbl(
-        select(., starts_with("EV_")),
-        ~ mean(c(...), na.rm = TRUE)
-      )
-  )
+# Design
+robu(
+  formula = ES ~ RCT, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_r, 
+  modelweights = "CORR",
+  rho = 0.5
+)
+
+# Grade
+robu(
+  formula = ES ~ GradeK + Grade1 + Grade2 + Grade3 + Grade4, 
+  var.eff.size = EV, 
+  studynum = stdid,
+  data = df_r, 
+  modelweights = "CORR",
+  rho = 0.5
+)
 ```
 
-
-#### Pre and Post
-
-```{r}
-df_l_prepost <-
-  read_xlsx(data_file, sheet = "LR") %>% 
-  rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")) %>%
-  bind_rows(
-    "LR" = .,
-    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
-    .id = "type"
-  ) %>% 
-  drop_na(AUTYR) %>%
-  filter(!is.na(TM1pre)) %>% 
-  select_if(~ any(!is.na(.))) %>%
-  select(AUTYR, type, sort(current_vars()))
-
-# treatment (post-pre)
-for (mt in 1:4) {
-  for (mc in 1:4) {
-    if (
-      !(str_glue("TM{mt}post") %in% colnames(df_l_prepost)) | 
-      !(str_glue("TM{mt}pre") %in% colnames(df_l_prepost))
-    ) {
-      next
-    }
-    df_l_prepost <-
-      escalc(
-        data = df_l_prepost,
-        measure = "SMCR",
-        m1i = df_l_prepost[, str_c("TM", mt, "post")] %>% unlist(),
-        m2i = df_l_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
-        sd1i = df_l_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
-        ni = df_l_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-        ri = rep(0.7, 6),
-        var.names = c(str_glue("TES_TM{mt}_CM{mc}"), str_glue("TEV_TM{mt}_CM{mc}"))
-      ) 
-  }
-}
-
-# control (post-pre)
-for (mt in 1:4) {
-  for (mc in 1:4) {
-    if (
-      !(str_glue("CM{mc}post") %in% colnames(df_l_prepost)) | 
-      !(str_glue("CM{mc}pre") %in% colnames(df_l_prepost))
-    ) {
-      next
-    }
-    df_l_prepost <-
-      escalc(
-        data = df_l_prepost,
-        measure = "SMCR",
-        m1i = df_l_prepost[, str_c("CM", mc, "post")] %>% unlist(),
-        m2i = df_l_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
-        sd1i = df_l_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
-        ni = df_l_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-        ri = rep(0.7, 6),
-        var.names = c(str_glue("CES_TM{mt}_CM{mc}"), str_glue("CEV_TM{mt}_CM{mc}"))
-      ) 
-  }
-}
-
-# ES and EV taken together
-for (mt in 1:4) {
-  for (mc in 1:4) {
-    if (
-      !(str_glue("TES_TM{mt}_CM{mc}") %in% colnames(df_l_prepost)) | 
-      !(str_glue("TEV_TM{mt}_CM{mc}") %in% colnames(df_l_prepost)) |
-      !(str_glue("CES_TM{mt}_CM{mc}") %in% colnames(df_l_prepost)) | 
-      !(str_glue("CEV_TM{mt}_CM{mc}") %in% colnames(df_l_prepost))
-    ) {
-      next
-    }
-    # subtracting effect size
-    df_l_prepost[, str_c("ES_TM", mt, "_CM", mc)] <- 
-      (df_l_prepost[, str_c("TES_TM", mt, "_CM", mc)] %>% unlist()) -
-      (df_l_prepost[, str_c("CES_TM", mt, "_CM", mc)] %>% unlist())
-    # adding variance
-    df_l_prepost[, str_c("EV_TM", mt, "_CM", mc)] <- 
-      (df_l_prepost[, str_c("TEV_TM", mt, "_CM", mc)] %>% unlist()) +
-      (df_l_prepost[, str_c("CEV_TM", mt, "_CM", mc)] %>% unlist())
-  }
-}
-
-
-df_l_prepost <- 
-  df_l_prepost %>% 
-  transmute(
-    AUTYR, 
-    type,
-    ES =
-      pmap_dbl(
-        select(., starts_with("ES_")),
-        ~ mean(c(...), na.rm = TRUE)
-      ),
-    EV =
-      pmap_dbl(
-        select(., starts_with("EV_")),
-        ~ mean(c(...), na.rm = TRUE)
-      )
-  )
-```
-
-
-### Synthesizing effect sizes
-
-```{r, eval = F, out.width="100%", out.height="100%", fig.asp=1.25}
-# Combining all R studies in a single tibble
-df_l <- bind_rows(df_l_post, df_l_prepost) %>% arrange(type, AUTYR)
-
-df_l %>% knitr::kable()
-
-# All R studies (REML)
-df_l %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  )
-
-# All R studies (Forest plot)
-df_l %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Reading Comprehension",
-    addcred = T, 
-    header = T
-  )
-
-# All RR studies (REML)
-df_l %>% 
-  filter(type == "RR") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  )
-
-# All RS studies (REML)
-df_l %>% 
-  filter(type == "RS") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = AUTYR
-  )
-```
