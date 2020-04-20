@@ -16,7 +16,9 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 library(tidyverse)
 library(readxl)
 library(metafor)
-library(robumeta)
+#library(robumeta)
+library(MAd)
+library(metaforest)
 
 # Parameters
 data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
@@ -188,7 +190,6 @@ df_prepost <-
     CN2post = if_else(is.na(CN2post) & !is.na(CN2pre), CN2pre, CN2post)
   )
 
-#df_prepost %>% select(type, contains(c("N1p", "N2p"))) %>% summary()
 
 # treatment (post-pre)
 for (mt in 1:4) {
@@ -276,9 +277,35 @@ df_prepost <-
 ### Combining pre and prepost
 
 ```{r}
+df_es_direct <-
+  tribble(
+    ~AUTYR,        ~type, ~ES, ~EV,
+    
+    # "Apthorp12_K", "VR",  0.98, 0,
+    # "Apthorp12_1", "VR",  1.00, 0,
+    # "Apthorp12_3", "VR",  0.95, 0,
+    # "Apthorp12_4", "VR",  1.24, 0,
+    
+    # "Apthorp12_P", "VS",  0.06, 0,
+    # "Apthorp12_I", "VS", -0.14, 0,
+    "Gersten10",   "VS",  0.33, 0.05,
+    "Jayanthi18",  "VS", -0.043, 0.001,
+
+    # "Apthorp12_K", "LR",  0.24, 0,
+    # "Apthorp12_1", "LR",  0.21, 0,
+    # 
+    # "Apthorp12_P", "LS",  0.05, 0,
+    # 
+    # "Apthorp12_3", "RR",  0.09, 0,
+    # "Apthorp12_4", "RR",  0.44, 0,
+    # 
+    # "Apthorp12_I", "RS", -0.11, 0,
+    "Gersten10",   "RS",  0.13, 0.04
+  )
+
+
 df_clean <- 
-  bind_rows(df_post, df_prepost) %>% 
-  arrange(type, AUTYR) %>% 
+  bind_rows(df_post, df_prepost, df_es_direct) %>% 
   separate(AUTYR, c("stdid", "case"), remove = F, extra = "merge") %>% 
   left_join(
     read_xlsx(data_file, sheet = "StudyChar") %>% 
@@ -289,10 +316,16 @@ df_clean <-
     Hours = Hours %>% parse_number()
   ) %>% 
   mutate_at(vars(type, CONT), as.factor) %>% 
-  arrange(type, AUTYR) %>% 
-  mutate_at(vars(case), replace_na, replace = "Default")
+  mutate_at(vars(case), replace_na, replace = "Default") %>% 
+  select(-stdid.x, stdid = stdid.y) %>%
+  select(type, stdid, AUTYR, everything()) %>%
+  arrange(type, stdid)
 
-df_clean %>% knitr::kable()
+df_clean %>% 
+  agg(id = stdid, es = ES, var = EV, method = "BHHR", data = .)
+
+
+#df_clean %>% knitr::kable()
 ```
 
 ### Summary stats
@@ -302,7 +335,7 @@ df_clean %>% count(AUTYR) %>% count()
 
 df_clean %>% count(stdid) %>% count()
 
-df_clean %>% 
+df_clean %>%
   group_by(type) %>%
   summarize(n = n_distinct(stdid))
 
@@ -333,15 +366,23 @@ robu(
 )
 #forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
 
-rma(
-  yi = ES, 
-  vi = EV, 
-  data = df_v, 
-  method = "REML",
-  slab = AUTYR
-) %>% 
+df_r %>% 
+  # group_by(stdid) %>% 
+  # mutate(
+  #   ES = mean(ES),
+  #   EV = mean(EV)
+  # ) %>%
+  # distinct(stdid, .keep_all = TRUE) %>% 
+  agg(id = stdid, es = ES, var = EV, method = "BHHR", data = .) %>% 
+  rma(
+    yi = es, 
+    vi = var, 
+    data = ., 
+    method = "REML",
+    slab = id
+  ) #%>% 
   forest(
-    order = "obs",
+    #order = "obs",
     xlab = "Vocabulary",
     addcred = T, 
     header = T
@@ -506,7 +547,7 @@ Checking variable correlations:
 p.mat <- ggcorrplot::cor_pmat(df_v %>% select(TMULT:TSTR, GradeK:Hours))
 df_v %>% 
   select(TMULT:TSTR, GradeK:Hours) %>% 
-  cor() %>% 
+  cor(use = "pairwise.complete.obs") %>% 
   ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
 ```
 
@@ -663,7 +704,7 @@ Checking variable correlations:
 p.mat <- ggcorrplot::cor_pmat(df_r %>% select(TMULT:TSTR, GradeK:Hours))
 df_r %>% 
   select(TMULT:TSTR, GradeK:Hours) %>% 
-  cor() %>% 
+  cor(use = "pairwise.complete.obs") %>% 
   ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
 ```
 
@@ -731,4 +772,37 @@ robu(
   rho = 0.5
 )
 ```
+
+## Metaforest
+
+```{r, warning=T}
+preselected <-
+  df_v %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 100, algorithm = "recursive")
+
+plot(preselected)
+retain_mods <- preselect_vars(preselected, cutoff = .5)
+grouped_cv <- trainControl(method = "cv", index = groupKFold(df_v$stdid, k = 10))
+tuning_grid <- expand.grid(whichweights = c("random", "fixed", "unif"), mtry = 2:6, min.node.size = 2:6)
+X <- df_v[, c("stdid", "EV", retain_mods)] %>% rename(vi = EV)
+mf_cv <- train(y = df_v$ES,
+               x = X,
+               study = "stdid",
+               method = ModelInfo_mf(), 
+               trControl = grouped_cv,
+               tuneGrid = tuning_grid,
+               num.trees = 1000)
+
+
+
+```
+
 
