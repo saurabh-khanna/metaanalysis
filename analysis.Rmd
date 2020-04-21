@@ -304,41 +304,52 @@ df_es_direct <-
   )
 
 
-df_clean <- 
+df_append <- 
   bind_rows(df_post, df_prepost, df_es_direct) %>% 
-  separate(AUTYR, c("stdid", "case"), remove = F, extra = "merge") %>% 
   left_join(
     read_xlsx(data_file, sheet = "StudyChar") %>% 
       drop_na(AUTYR),
     by = "AUTYR"
   ) %>%
-  mutate(
-    Hours = Hours %>% parse_number()
+  left_join(
+    read_xlsx(data_file, sheet = "Notes") %>% select(AUTYR, Citation),
+    by = "AUTYR"
   ) %>% 
-  mutate_at(vars(type, CONT), as.factor) %>% 
-  mutate_at(vars(case), replace_na, replace = "Default") %>% 
-  select(-stdid.x, stdid = stdid.y) %>%
-  select(type, stdid, AUTYR, everything()) %>%
-  arrange(type, stdid)
+  mutate(
+    Hours = Hours %>% parse_number(),
+    CONT = recode(CONT, "BAU" = "0", "ALT" = "1") %>% as.integer()
+  ) %>%
+  rename(cont_alt = CONT, citation = Citation) %>% 
+  arrange(type, stdid) %>%
+  select(type, stdid, citation, AUTYR, everything()) %>% 
+  filter(!str_detect(stdid, "^Apth"))
+  
 
-df_clean %>% 
-  agg(id = stdid, es = ES, var = EV, method = "BHHR", data = .)
+cor_es <-
+  df_append %>%
+  unite("type_stdid", c("type", "stdid")) %>% 
+  agg(id = type_stdid, es = ES, var = EV, method = "BHHR", data = .) %>% 
+  separate(id, c("type", "stdid")) %>% 
+  rename(ES = es, EV = var)
 
+df_clean <-
+  df_append %>%
+  group_by(type, stdid) %>% 
+  summarize_at(vars(TMULT:Hours), ~ round(mean(.))) %>%
+  ungroup() %>%
+  left_join(cor_es, by = c("type", "stdid")) %>% 
+  select(type, stdid, ES, EV, everything())
 
+rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
 #df_clean %>% knitr::kable()
 ```
 
 ### Summary stats
 
 ```{r}
-df_clean %>% count(AUTYR) %>% count()
-
-df_clean %>% count(stdid) %>% count()
-
-df_clean %>%
-  group_by(type) %>%
-  summarize(n = n_distinct(stdid))
-
+df_clean %>% count(stdid)
+#df_clean %>% writexl::write_xlsx("df_clean.xlsx")
+df_clean %>% count(type, stdid)
 
 df_v <- df_clean %>% filter(type %in% c("VR", "VS"))
 df_l <- df_clean %>% filter(type %in% c("LR", "LS"))
@@ -346,8 +357,6 @@ df_r <- df_clean %>% filter(type %in% c("RR", "RS"))
 df_m <- df_clean %>% filter(type %in% c("MR", "MS"))
 df_s <- df_clean %>% filter(type %in% c("SR", "SS"))
 df_a <- df_clean %>% filter(type == "AS")
-
-rm(df_post, df_prepost)
 ```
 
 
@@ -356,185 +365,282 @@ rm(df_post, df_prepost)
 ### Vocabulary
 
 ```{r, out.width="100%", out.height="100%", fig.asp=2}
-robu(
-  formula = ES ~ 1, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_v, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
-
-df_r %>% 
-  # group_by(stdid) %>% 
-  # mutate(
-  #   ES = mean(ES),
-  #   EV = mean(EV)
-  # ) %>%
-  # distinct(stdid, .keep_all = TRUE) %>% 
-  agg(id = stdid, es = ES, var = EV, method = "BHHR", data = .) %>% 
+model_1 <-
+  df_v %>%
+  arrange(desc(type), desc(ES)) %>% 
   rma(
-    yi = es, 
-    vi = var, 
+    yi = ES, 
+    vi = EV, 
     data = ., 
     method = "REML",
-    slab = id
-  ) #%>% 
-  forest(
-    #order = "obs",
-    xlab = "Vocabulary",
-    addcred = T, 
-    header = T
+    slab = stdid
   )
+
+model_2 <-
+  df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "VR"),
+    slab = stdid
+  )
+
+model_3 <-
+  df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "VS"),
+    slab = stdid
+  )
+
+model_1
+model_2
+model_3
+df_v %>% count(type)
+```
+
+```{r,  out.width="100%", out.height="100%", fig.asp=2.25, fig.retina=2}
+forest(
+  model_1,
+  xlab = "Vocabulary",
+  addcred = T, 
+  header = T,
+  ylim = c(-1, 80),
+  rows = c(3:26, 33:74),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+op <- par(cex = 0.75, font = 4)
+text(-16, c(28, 76), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 31, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
 ### Listening Comprehension
 
-```{r, out.width="100%", out.height="100%", fig.asp=1}
-robu(
-  formula = ES ~ 1, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_l, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
 
-rma(
-  yi = ES, 
-  vi = EV, 
-  data = df_l, 
-  method = "REML",
-  slab = AUTYR
-) %>% 
-  forest(
-    order = "obs",
-    xlab = "Listening Comprehension",
-    addcred = T, 
-    header = T
+```{r, out.width="100%", out.height="100%", fig.asp=2}
+model_1 <-
+  df_l %>%
+  arrange(desc(type), desc(ES)) %>%  
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
   )
+
+model_2 <-
+  df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "LR"),
+    slab = stdid
+  )
+
+model_3 <-
+  df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "LS"),
+    slab = stdid
+  )
+
+model_1
+model_2
+model_3
+df_l %>% count(type)
 ```
+
+```{r,  out.width="100%", out.height="100%", fig.asp=1, fig.retina=2}
+forest(
+  model_1,
+  xlab = "Listening Comprehension",
+  addcred = T, 
+  header = T,
+  ylim = c(-1, 30),
+  rows = c(3:8, 15:24),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+op <- par(cex = 0.75, font = 4)
+text(-6.3, c(10, 26), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 12, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
+```
+
 
 
 ### Reading Comprehension
 
-```{r, out.width="100%", out.height="100%", fig.asp=1}
-robu(
-  formula = ES ~ 1, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_r, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
 
-rma(
-  yi = ES, 
-  vi = EV, 
-  data = df_r, 
-  method = "REML",
-  slab = AUTYR
-) %>% 
-  forest(
-    order = "obs",
-    xlab = "Reading Comprehension",
-    addcred = T, 
-    header = T
+```{r, out.width="100%", out.height="100%", fig.asp=2}
+model_1 <-
+  df_r %>%
+  arrange(desc(type), desc(ES)) %>%  
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
   )
+
+model_2 <-
+  df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "RR"),
+    slab = stdid
+  )
+
+model_3 <-
+  df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "RS"),
+    slab = stdid
+  )
+
+model_1
+model_2
+model_3
+df_r %>% count(type)
+```
+
+```{r,  out.width="100%", out.height="100%", fig.asp=1.25, fig.retina=2}
+forest(
+  model_1,
+  xlab = "Reading Comprehension",
+  addcred = T, 
+  header = T,
+  ylim = c(-1, 37),
+  rows = c(3:20, 27:31),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+op <- par(cex = 0.75, font = 4)
+text(-8.7, c(22, 33), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 24, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
 ### Morphology
 
-```{r}
-robu(
-  formula = ES ~ 1, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_m, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+```{r, fig.retina=2}
+df_m %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
 
-rma(
-  yi = ES, 
-  vi = EV, 
-  data = df_m, 
-  method = "REML",
-  slab = AUTYR
-) %>% 
+df_m %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  ) %>% 
   forest(
     order = "obs",
     xlab = "Morphology",
     addcred = T, 
-    header = T
+    header = T,
+    pch = 21,
+    bg = "grey",
+    lwd = 1.5
   )
 ```
 
-
 ### Syntax
 
-```{r}
-# robu(
-#   formula = ES ~ 1, 
-#   var.eff.size = EV, 
-#   studynum = stdid,
-#   data = df_s, 
-#   modelweights = "CORR",
-#   rho = 0.5
-# )
-#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
+```{r, fig.retina=2}
+df_s %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
 
-rma(
-  yi = ES, 
-  vi = EV, 
-  data = df_s, 
-  method = "REML",
-  slab = AUTYR
-) %>% 
+df_s %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  ) %>% 
   forest(
     order = "obs",
     xlab = "Syntax",
     addcred = T, 
-    header = T
+    header = T,
+    pch = 21,
+    bg = "grey",
+    lwd = 1.5
   )
 ```
-
 
 ### AS Studies
 
-```{r}
-robu(
-  formula = ES ~ 1, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_a, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-#forest.robu(es.lab = "stdid", study.lab = "stdid", "Effect Size" = ES)
 
-rma(
-  yi = ES, 
-  vi = EV, 
-  data = df_a, 
-  method = "REML",
-  slab = AUTYR
-) %>% 
+```{r, fig.retina=2}
+df_a %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+df_a %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  ) %>% 
   forest(
     order = "obs",
-    xlab = "AS Studies",
+    xlab = "Academic Learning",
     addcred = T, 
-    header = T
+    header = T,
+    pch = 21,
+    bg = "grey",
+    lwd = 1.5
   )
 ```
-
-
 
 
 ## Moderator effects
@@ -543,10 +649,10 @@ rma(
 
 Checking variable correlations:
 
-```{r, fig.asp = 1}
-p.mat <- ggcorrplot::cor_pmat(df_v %>% select(TMULT:TSTR, GradeK:Hours))
+```{r, fig.asp = 1, fig.retina=2}
+p.mat <- ggcorrplot::cor_pmat(df_v %>% select(TMULT:Hours))
 df_v %>% 
-  select(TMULT:TSTR, GradeK:Hours) %>% 
+  select(TMULT:Hours) %>% 
   cor(use = "pairwise.complete.obs") %>% 
   ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
 ```
@@ -554,156 +660,30 @@ df_v %>%
 
 Meta-regressions:
 
+
 ```{r}
-# Custom vs Std
-robu(
-  formula = ES ~ type, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_v, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Single vs Multiple
-robu(
-  formula = ES ~ TMULT, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_v, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Hours
-robu(
-  formula = ES ~ scale(Hours), 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_v, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Control group
-robu(
-  formula = ES ~ factor(CONT), 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_v, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Design
-robu(
-  formula = ES ~ RCT + WSD, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_v, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Grade
-robu(
-  formula = ES ~ GradeK + Grade1 + Grade2 + Grade3 + Grade4, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_v, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ . - stdid - ES - EV - RCT - TSYN
+  )
 ```
+
+
+
 
 
 ### Listening Comprehension 
 
 Checking variable correlations:
 
-```{r, fig.asp = 1}
-p.mat <- ggcorrplot::cor_pmat(df_l %>% select(TMULT:TSTR, GradeK:Hours))
+```{r, fig.asp = 1, fig.retina=2}
+p.mat <- ggcorrplot::cor_pmat(df_l %>% select(TMULT:Hours))
 df_l %>% 
-  select(TMULT:TSTR, GradeK:Hours) %>% 
-  cor() %>% 
-  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
-```
-
-
-Meta-regressions:
-
-```{r}
-# Custom vs Std
-robu(
-  formula = ES ~ type, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_l, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Single vs Multiple
-robu(
-  formula = ES ~ TMULT, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_l, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Hours
-robu(
-  formula = ES ~ scale(Hours), 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_l, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Control group
-robu(
-  formula = ES ~ factor(CONT), 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_l, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Design
-robu(
-  formula = ES ~ RCT, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_l, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Grade
-robu(
-  formula = ES ~ GradeK + Grade1 + Grade2 + Grade3 + Grade4, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_l, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-```
-
-
-### Reading Comprehension 
-
-Checking variable correlations:
-
-```{r, fig.asp = 1}
-p.mat <- ggcorrplot::cor_pmat(df_r %>% select(TMULT:TSTR, GradeK:Hours))
-df_r %>% 
-  select(TMULT:TSTR, GradeK:Hours) %>% 
+  select(TMULT:Hours) %>% 
   cor(use = "pairwise.complete.obs") %>% 
   ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
 ```
@@ -711,73 +691,37 @@ df_r %>%
 
 Meta-regressions:
 
-```{r}
-# Custom vs Std
-robu(
-  formula = ES ~ type, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_r, 
-  modelweights = "CORR",
-  rho = 0.5
-)
 
-# Single vs Multiple
-robu(
-  formula = ES ~ TMULT, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_r, 
-  modelweights = "CORR",
-  rho = 0.5
-)
 
-# Hours
-robu(
-  formula = ES ~ scale(Hours), 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_r, 
-  modelweights = "CORR",
-  rho = 0.5
-)
+### Reading Comprehension 
 
-# Control group
-robu(
-  formula = ES ~ factor(CONT), 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_r, 
-  modelweights = "CORR",
-  rho = 0.5
-)
+Checking variable correlations:
 
-# Design
-robu(
-  formula = ES ~ RCT, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_r, 
-  modelweights = "CORR",
-  rho = 0.5
-)
-
-# Grade
-robu(
-  formula = ES ~ GradeK + Grade1 + Grade2 + Grade3 + Grade4, 
-  var.eff.size = EV, 
-  studynum = stdid,
-  data = df_r, 
-  modelweights = "CORR",
-  rho = 0.5
-)
+```{r, fig.asp = 1, fig.retina=2}
+p.mat <- ggcorrplot::cor_pmat(df_r %>% select(TMULT:Hours))
+df_r %>% 
+  select(TMULT:Hours) %>% 
+  cor(use = "pairwise.complete.obs") %>% 
+  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
 ```
+
+
+Meta-regressions:
+
+
+
+
+
+
+
+
+
+
 
 ## Metaforest
 
-```{r, warning=T}
-preselected <-
-  df_v %>% 
+```{r, warning=T, fig.retina=2}
+df_v %>% 
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
   drop_na(Hours) %>% 
@@ -786,23 +730,29 @@ preselected <-
     data = .,
     study = "stdid"
   ) %>%
-  preselect(replications = 100, algorithm = "recursive")
+  VarImpPlot()
 
-plot(preselected)
-retain_mods <- preselect_vars(preselected, cutoff = .5)
-grouped_cv <- trainControl(method = "cv", index = groupKFold(df_v$stdid, k = 10))
-tuning_grid <- expand.grid(whichweights = c("random", "fixed", "unif"), mtry = 2:6, min.node.size = 2:6)
-X <- df_v[, c("stdid", "EV", retain_mods)] %>% rename(vi = EV)
-mf_cv <- train(y = df_v$ES,
-               x = X,
-               study = "stdid",
-               method = ModelInfo_mf(), 
-               trControl = grouped_cv,
-               tuneGrid = tuning_grid,
-               num.trees = 1000)
+df_l %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  VarImpPlot()
 
-
-
+df_r %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  VarImpPlot()
 ```
 
 
