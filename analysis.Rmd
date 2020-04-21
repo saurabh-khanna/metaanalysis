@@ -657,6 +657,23 @@ df_v %>%
   ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
 ```
 
+MetaForest:
+
+```{r, fig.retina=2}
+df_v %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+
 
 Meta-regressions:
 
@@ -668,11 +685,56 @@ df_v %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ . - stdid - ES - EV - RCT - TSYN
+    mods = ~ type
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Grade5
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
   )
 ```
 
-
+Only `type` is significant.
 
 
 
@@ -689,9 +751,93 @@ df_l %>%
 ```
 
 
+MetaForest:
+
+```{r, fig.retina=2}
+df_l %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+
+
 Meta-regressions:
 
 
+```{r}
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ type
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ SmallGr
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ WholeCl
+  )
+```
+
+TRC, type, TMOR, TMULT, SmallGr, WholeCl are significant.
 
 ### Reading Comprehension 
 
@@ -706,43 +852,9 @@ df_r %>%
 ```
 
 
-Meta-regressions:
+MetaForest:
 
-
-
-
-
-
-
-
-
-
-
-## Metaforest
-
-```{r, warning=T, fig.retina=2}
-df_v %>% 
-  rename(vi = EV) %>%
-  mutate(stdid = stdid %>% as_factor()) %>% 
-  drop_na(Hours) %>% 
-  MetaForest(
-    formula = ES ~ .,
-    data = .,
-    study = "stdid"
-  ) %>%
-  VarImpPlot()
-
-df_l %>% 
-  rename(vi = EV) %>%
-  mutate(stdid = stdid %>% as_factor()) %>% 
-  drop_na(Hours) %>% 
-  MetaForest(
-    formula = ES ~ .,
-    data = .,
-    study = "stdid"
-  ) %>%
-  VarImpPlot()
-
+```{r, fig.retina=2}
 df_r %>% 
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -752,7 +864,32 @@ df_r %>%
     data = .,
     study = "stdid"
   ) %>%
-  VarImpPlot()
+  preselect(replications = 500L) %>% 
+  plot()
 ```
+
+Meta-regressions:
+
+```{r}
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ type
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+```
+
+`type` and `TTEC` are significant.
 
 
