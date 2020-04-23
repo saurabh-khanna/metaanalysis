@@ -1,0 +1,914 @@
+---
+title: "Metaanalysis Script"
+author: "Saurabh Khanna"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+```{r}
+# Libraries
+library(tidyverse)
+library(readxl)
+library(metafor)
+#library(robumeta)
+library(MAd)
+library(metaforest)
+
+# Parameters
+data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
+```
+
+## Reading in data
+
+```{r}
+# join checks
+read_xlsx(data_file, sheet = "VR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "VS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "LR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "LS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "RR") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+
+read_xlsx(data_file, sheet = "RS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
+```
+
+All good!
+
+
+## Calculate effect sizes
+
+### Post only
+
+```{r}
+df_post <-
+  bind_rows(
+    "VR" = read_xlsx(data_file, sheet = "VR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VR", "")),
+    "VS" = read_xlsx(data_file, sheet = "VS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VS", "")),
+    "RR" = read_xlsx(data_file, sheet = "RR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")),
+    "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
+    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
+    "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(is.na(TM1pre)) %>% 
+  select_if(~ any(!is.na(.))) %>%
+  select(AUTYR, type, sort(current_vars()))
+
+
+for (mt in 1:4) {
+  for (mc in 1:4) {
+    if (
+      !(str_glue("TM{mt}post") %in% colnames(df_post)) | 
+      !(str_glue("CM{mc}post") %in% colnames(df_post))
+    ) {
+      next
+    }
+    df_post <-
+      escalc(
+        data = df_post,
+        measure = "SMD",
+        m1i = df_post[, str_c("TM", mt, "post")] %>% unlist(),
+        m2i = df_post[, str_c("CM", mc, "post")] %>% unlist(),
+        sd1i = df_post[, str_c("TS", mt, "post")] %>% unlist(),
+        sd2i = df_post[, str_c("CS", mc, "post")] %>% unlist(),
+        n1i = df_post[, str_c("TN", mt, "post")] %>% unlist(),
+        n2i = df_post[, str_c("CN", mc, "post")] %>% unlist(),
+        var.names = c(str_glue("ES_TM{mt}_CM{mc}"), str_glue("EV_TM{mt}_CM{mc}"))
+      ) 
+  }
+}
+
+
+df_post <-
+  df_post %>% 
+  transmute(
+    AUTYR, 
+    type,
+    ES =
+      pmap_dbl(
+        select(., starts_with("ES_")),
+        ~ mean(c(...), na.rm = TRUE)
+      ),
+    EV =
+      pmap_dbl(
+        select(., starts_with("EV_")),
+        ~ mean(c(...), na.rm = TRUE)
+      )
+  )
+```
+
+
+### Pre and Post
+
+```{r}
+df_prepost <-
+  bind_rows(
+    "VR" = read_xlsx(data_file, sheet = "VR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VR", "")),
+    "VS" = read_xlsx(data_file, sheet = "VS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VS", "")),
+    "RR" = read_xlsx(data_file, sheet = "RR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")),
+    "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
+    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
+    "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(!is.na(TM1pre)) %>% 
+  select_if(~ any(!is.na(.))) %>%
+  select(AUTYR, type, sort(current_vars())) %>% 
+  mutate(
+    TN1post = if_else(is.na(TN1post) & !is.na(TN1pre), TN1pre, TN1post),
+    TN2post = if_else(is.na(TN2post) & !is.na(TN2pre), TN2pre, TN2post),
+    CN1post = if_else(is.na(CN1post) & !is.na(CN1pre), CN1pre, CN1post),
+    CN2post = if_else(is.na(CN2post) & !is.na(CN2pre), CN2pre, CN2post)
+  )
+
+
+# treatment (post-pre)
+for (mt in 1:4) {
+  if (
+    !(str_glue("TM{mt}post") %in% colnames(df_prepost)) | 
+    !(str_glue("TM{mt}pre") %in% colnames(df_prepost))
+  ) {
+    next
+  }
+  df_prepost <-
+    escalc(
+      data = df_prepost,
+      measure = "SMCR",
+      m1i = df_prepost[, str_c("TM", mt, "post")] %>% unlist(),
+      m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
+      sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
+      ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
+      ri = rep(0.5, 95),
+      var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
+    ) 
+}
+
+# control (post-pre)
+for (mc in 1:4) {
+  if (
+    !(str_glue("CM{mc}post") %in% colnames(df_prepost)) | 
+    !(str_glue("CM{mc}pre") %in% colnames(df_prepost))
+  ) {
+    next
+  }
+  df_prepost <-
+    escalc(
+      data = df_prepost,
+      measure = "SMCR",
+      m1i = df_prepost[, str_c("CM", mc, "post")] %>% unlist(),
+      m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
+      sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
+      ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
+      ri = rep(0.5, 95),
+      var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
+    ) 
+}
+
+
+# ES and EV taken together
+for (m in 1:4) {
+  if (
+    !(str_glue("TES_TM{m}") %in% colnames(df_prepost)) | 
+    !(str_glue("TEV_TM{m}") %in% colnames(df_prepost)) |
+    !(str_glue("CES_CM{m}") %in% colnames(df_prepost)) | 
+    !(str_glue("CEV_CM{m}") %in% colnames(df_prepost))
+  ) {
+    next
+  }
+  # subtracting effect size
+  df_prepost[, str_c("ES_TM", m, "_CM", m)] <- 
+    (df_prepost[, str_c("TES_TM", m)] %>% unlist()) -
+    (df_prepost[, str_c("CES_CM", m)] %>% unlist())
+  # adding variance
+  df_prepost[, str_c("EV_TM", m, "_CM", m)] <- 
+    (df_prepost[, str_c("TEV_TM", m)] %>% unlist()) +
+    (df_prepost[, str_c("CEV_CM", m)] %>% unlist())
+}
+
+
+df_prepost <- 
+  df_prepost %>% 
+  transmute(
+    AUTYR, 
+    type,
+    ES =
+      pmap_dbl(
+        select(., starts_with("ES_")),
+        ~ mean(c(...), na.rm = TRUE)
+      ),
+    EV =
+      pmap_dbl(
+        select(., starts_with("EV_")),
+        ~ mean(c(...), na.rm = TRUE)
+      )
+  )
+```
+
+
+### Combining pre and prepost
+
+```{r}
+df_es_direct <-
+  tribble(
+    ~AUTYR,        ~type, ~ES, ~EV,
+    
+    # "Apthorp12_K", "VR",  0.98, 0,
+    # "Apthorp12_1", "VR",  1.00, 0,
+    # "Apthorp12_3", "VR",  0.95, 0,
+    # "Apthorp12_4", "VR",  1.24, 0,
+    
+    # "Apthorp12_P", "VS",  0.06, 0,
+    # "Apthorp12_I", "VS", -0.14, 0,
+    "Gersten10",   "VS",  0.33, 0.05,
+    "Jayanthi18",  "VS", -0.043, 0.001,
+
+    # "Apthorp12_K", "LR",  0.24, 0,
+    # "Apthorp12_1", "LR",  0.21, 0,
+    # 
+    # "Apthorp12_P", "LS",  0.05, 0,
+    # 
+    # "Apthorp12_3", "RR",  0.09, 0,
+    # "Apthorp12_4", "RR",  0.44, 0,
+    # 
+    # "Apthorp12_I", "RS", -0.11, 0,
+    "Gersten10",   "RS",  0.13, 0.04
+  )
+
+
+df_append <- 
+  bind_rows(df_post, df_prepost, df_es_direct) %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%
+  left_join(
+    read_xlsx(data_file, sheet = "Notes") %>% select(AUTYR, Citation),
+    by = "AUTYR"
+  ) %>% 
+  mutate(
+    Hours = Hours %>% parse_number(),
+    CONT = recode(CONT, "BAU" = "0", "ALT" = "1") %>% as.integer()
+  ) %>%
+  rename(cont_alt = CONT, citation = Citation) %>% 
+  arrange(type, stdid) %>%
+  select(type, stdid, citation, AUTYR, everything()) %>% 
+  filter(!str_detect(stdid, "^Apth"))
+  
+
+cor_es <-
+  df_append %>%
+  unite("type_stdid", c("type", "stdid")) %>% 
+  agg(id = type_stdid, es = ES, var = EV, method = "BHHR", data = .) %>% 
+  separate(id, c("type", "stdid")) %>% 
+  rename(ES = es, EV = var)
+
+df_clean <-
+  df_append %>%
+  group_by(type, stdid) %>% 
+  summarize_at(vars(TMULT:Hours), ~ round(mean(.))) %>%
+  ungroup() %>%
+  left_join(cor_es, by = c("type", "stdid")) %>% 
+  select(type, stdid, ES, EV, everything())
+
+rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
+#df_clean %>% knitr::kable()
+```
+
+### Summary stats
+
+```{r}
+df_clean %>% count(stdid)
+#df_clean %>% writexl::write_xlsx("df_clean.xlsx")
+df_clean %>% count(type, stdid)
+
+df_v <- df_clean %>% filter(type %in% c("VR", "VS"))
+df_l <- df_clean %>% filter(type %in% c("LR", "LS"))
+df_r <- df_clean %>% filter(type %in% c("RR", "RS"))
+df_m <- df_clean %>% filter(type %in% c("MR", "MS"))
+df_s <- df_clean %>% filter(type %in% c("SR", "SS"))
+df_a <- df_clean %>% filter(type == "AS")
+```
+
+
+## Synthesizing effect sizes
+
+### Vocabulary
+
+```{r, out.width="100%", out.height="100%", fig.asp=2}
+model_1 <-
+  df_v %>%
+  arrange(desc(type), desc(ES)) %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+model_2 <-
+  df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "VR"),
+    slab = stdid
+  )
+
+model_3 <-
+  df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "VS"),
+    slab = stdid
+  )
+
+model_1
+model_2
+model_3
+df_v %>% count(type)
+```
+
+```{r,  out.width="100%", out.height="100%", fig.asp=2.25, fig.retina=2}
+forest(
+  model_1,
+  xlab = "Vocabulary",
+  addcred = T, 
+  header = T,
+  ylim = c(-1, 80),
+  rows = c(3:26, 33:74),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+op <- par(cex = 0.75, font = 4)
+text(-16, c(28, 76), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 31, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
+```
+
+
+### Listening Comprehension
+
+
+```{r, out.width="100%", out.height="100%", fig.asp=2}
+model_1 <-
+  df_l %>%
+  arrange(desc(type), desc(ES)) %>%  
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+model_2 <-
+  df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "LR"),
+    slab = stdid
+  )
+
+model_3 <-
+  df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "LS"),
+    slab = stdid
+  )
+
+model_1
+model_2
+model_3
+df_l %>% count(type)
+```
+
+```{r,  out.width="100%", out.height="100%", fig.asp=1, fig.retina=2}
+forest(
+  model_1,
+  xlab = "Listening Comprehension",
+  addcred = T, 
+  header = T,
+  ylim = c(-1, 30),
+  rows = c(3:8, 15:24),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+op <- par(cex = 0.75, font = 4)
+text(-6.3, c(10, 26), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 12, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
+```
+
+
+
+### Reading Comprehension
+
+
+```{r, out.width="100%", out.height="100%", fig.asp=2}
+model_1 <-
+  df_r %>%
+  arrange(desc(type), desc(ES)) %>%  
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+model_2 <-
+  df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "RR"),
+    slab = stdid
+  )
+
+model_3 <-
+  df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    subset = (type == "RS"),
+    slab = stdid
+  )
+
+model_1
+model_2
+model_3
+df_r %>% count(type)
+```
+
+```{r,  out.width="100%", out.height="100%", fig.asp=1.25, fig.retina=2}
+forest(
+  model_1,
+  xlab = "Reading Comprehension",
+  addcred = T, 
+  header = T,
+  ylim = c(-1, 37),
+  rows = c(3:20, 27:31),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+op <- par(cex = 0.75, font = 4)
+text(-8.7, c(22, 33), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 24, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
+```
+
+
+### Morphology
+
+```{r, fig.retina=2}
+df_m %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+df_m %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Morphology",
+    addcred = T, 
+    header = T,
+    pch = 21,
+    bg = "grey",
+    lwd = 1.5
+  )
+```
+
+### Syntax
+
+```{r, fig.retina=2}
+df_s %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+df_s %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Syntax",
+    addcred = T, 
+    header = T,
+    pch = 21,
+    bg = "grey",
+    lwd = 1.5
+  )
+```
+
+### AS Studies
+
+
+```{r, fig.retina=2}
+df_a %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+df_a %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Academic Learning",
+    addcred = T, 
+    header = T,
+    pch = 21,
+    bg = "grey",
+    lwd = 1.5
+  )
+```
+
+
+## Moderator effects
+
+### Vocabulary 
+
+Checking variable correlations:
+
+```{r, fig.asp = 1, fig.retina=2}
+p.mat <- ggcorrplot::cor_pmat(df_v %>% select(TMULT:Hours))
+df_v %>% 
+  select(TMULT:Hours) %>% 
+  cor(use = "pairwise.complete.obs") %>% 
+  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
+```
+
+MetaForest:
+
+```{r, fig.retina=2}
+df_v %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+
+
+Meta-regressions:
+
+
+```{r}
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ type
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Grade5
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+```
+
+Only `type` is significant.
+
+
+
+### Listening Comprehension 
+
+Checking variable correlations:
+
+```{r, fig.asp = 1, fig.retina=2}
+p.mat <- ggcorrplot::cor_pmat(df_l %>% select(TMULT:Hours))
+df_l %>% 
+  select(TMULT:Hours) %>% 
+  cor(use = "pairwise.complete.obs") %>% 
+  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
+```
+
+
+MetaForest:
+
+```{r, fig.retina=2}
+df_l %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+
+
+Meta-regressions:
+
+
+```{r}
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ type
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ SmallGr
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ WholeCl
+  )
+```
+
+`TRC`, `type`, `TMOR`, `TMULT`, `SmallGr`, `WholeCl` are significant.
+
+### Reading Comprehension 
+
+Checking variable correlations:
+
+```{r, fig.asp = 1, fig.retina=2}
+p.mat <- ggcorrplot::cor_pmat(df_r %>% select(TMULT:Hours))
+df_r %>% 
+  select(TMULT:Hours) %>% 
+  cor(use = "pairwise.complete.obs") %>% 
+  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
+```
+
+
+MetaForest:
+
+```{r, fig.retina=2}
+df_r %>% 
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+Meta-regressions:
+
+```{r}
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ type
+  )
+
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC + type
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC * type
+  )
+```
+
+`type` and `TTEC` are significant.
+
+

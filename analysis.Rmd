@@ -18,7 +18,7 @@ library(readxl)
 library(metafor)
 #library(robumeta)
 library(MAd)
-library(metaforest)
+#library(metaforest)
 
 # Parameters
 data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
@@ -158,6 +158,8 @@ df_post <-
         ~ mean(c(...), na.rm = TRUE)
       )
   )
+
+df_post %>% arrange(type, AUTYR) %>% filter(str_detect(AUTYR, "Apthorp"))
 ```
 
 
@@ -274,7 +276,7 @@ df_prepost <-
 ```
 
 
-### Combining pre and prepost
+### Directly entered ES
 
 ```{r}
 df_es_direct <-
@@ -302,8 +304,11 @@ df_es_direct <-
     # "Apthorp12_I", "RS", -0.11, 0,
     "Gersten10",   "RS",  0.13, 0.04
   )
+```
 
+### Combining all
 
+```{r}
 df_append <- 
   bind_rows(df_post, df_prepost, df_es_direct) %>% 
   left_join(
@@ -311,20 +316,13 @@ df_append <-
       drop_na(AUTYR),
     by = "AUTYR"
   ) %>%
-  left_join(
-    read_xlsx(data_file, sheet = "Notes") %>% select(AUTYR, Citation),
-    by = "AUTYR"
-  ) %>% 
   mutate(
     Hours = Hours %>% parse_number(),
     CONT = recode(CONT, "BAU" = "0", "ALT" = "1") %>% as.integer()
   ) %>%
-  rename(cont_alt = CONT, citation = Citation) %>% 
   arrange(type, stdid) %>%
-  select(type, stdid, citation, AUTYR, everything()) %>% 
-  filter(!str_detect(stdid, "^Apth"))
+  select(type, stdid, AUTYR, everything())
   
-
 cor_es <-
   df_append %>%
   unite("type_stdid", c("type", "stdid")) %>% 
@@ -338,7 +336,32 @@ df_clean <-
   summarize_at(vars(TMULT:Hours), ~ round(mean(.))) %>%
   ungroup() %>%
   left_join(cor_es, by = c("type", "stdid")) %>% 
-  select(type, stdid, ES, EV, everything())
+  select(type, stdid, ES, EV, everything()) %>% 
+  mutate(
+    design = case_when(
+      RCT == 1 ~ "RCT",
+      QED == 1 ~ "QED",
+      WSD == 1 ~ "WSD",
+      TRUE ~ NA_character_
+    ) %>% as_factor(),
+    grade = case_when(
+      (GradeK + Grade1 + Grade2) > 0 & (Grade3 + Grade4 + Grade5) == 0 ~ "K-2",
+      (Grade3 + Grade4 + Grade5) > 0 & (GradeK + Grade1 + Grade2) == 0 ~ "3-5",
+      TRUE ~ "Both"
+    ) %>% as_factor(),
+    grouping = case_when(
+      (WholeCl + SmallGr + Indiv) > 1 ~ "Combination",
+      WholeCl == 1 ~ "Whole class",
+      SmallGr == 1 ~ "Small group",
+      Indiv == 1 ~ "Individual",
+      TRUE ~ NA_character_
+    ) %>% as_factor(),
+    type = type %>% as_factor,
+    CONT = CONT %>% factor(labels = c("BAU", "ALT"))
+  ) %>%
+  select(-c(RCT, QED, WSD, WholeCl, SmallGr, Indiv), -starts_with("Grade", ignore.case = F))
+
+df_clean %>% count(CONT)
 
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
 #df_clean %>% knitr::kable()
@@ -348,7 +371,8 @@ rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
 
 ```{r}
 df_clean %>% count(stdid)
-#df_clean %>% writexl::write_xlsx("df_clean.xlsx")
+#df_clean %>% arrange(type, ES) %>% writexl::write_xlsx("df_clean.xlsx")
+#df_clean %>% select(stdid, type) %>% arrange(stdid, type) %>% writexl::write_xlsx("temp.xlsx")
 df_clean %>% count(type, stdid)
 
 df_v <- df_clean %>% filter(type %in% c("VR", "VS"))
@@ -410,16 +434,16 @@ forest(
   xlab = "Vocabulary",
   addcred = T, 
   header = T,
-  ylim = c(-1, 80),
-  rows = c(3:26, 33:74),
+  ylim = c(-1, 85),
+  rows = c(3:27, 34:78),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-16, c(28, 76), pos = 4, c("Standardized Measure", "Custom Measure"))
-addpoly(model_2, row = 31, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
+text(-16, c(29, 80), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 32, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
@@ -472,16 +496,16 @@ forest(
   xlab = "Listening Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 30),
-  rows = c(3:8, 15:24),
+  ylim = c(-1, 33),
+  rows = c(3:9, 16:27),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-6.3, c(10, 26), pos = 4, c("Standardized Measure", "Custom Measure"))
-addpoly(model_2, row = 12, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
+text(-6.3, c(11, 29), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 14, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
@@ -535,14 +559,14 @@ forest(
   xlab = "Reading Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 37),
-  rows = c(3:20, 27:31),
+  ylim = c(-1, 38),
+  rows = c(3:20, 27:32),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-8.7, c(22, 33), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-8.7, c(22, 34), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 24, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 ```
@@ -610,7 +634,7 @@ df_s %>%
   )
 ```
 
-### AS Studies
+### Academic Learning
 
 
 ```{r, fig.retina=2}
@@ -645,38 +669,7 @@ df_a %>%
 
 ## Moderator effects
 
-### Vocabulary 
-
-Checking variable correlations:
-
-```{r, fig.asp = 1, fig.retina=2}
-p.mat <- ggcorrplot::cor_pmat(df_v %>% select(TMULT:Hours))
-df_v %>% 
-  select(TMULT:Hours) %>% 
-  cor(use = "pairwise.complete.obs") %>% 
-  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
-```
-
-MetaForest:
-
-```{r, fig.retina=2}
-df_v %>% 
-  rename(vi = EV) %>%
-  mutate(stdid = stdid %>% as_factor()) %>% 
-  drop_na(Hours) %>% 
-  MetaForest(
-    formula = ES ~ .,
-    data = .,
-    study = "stdid"
-  ) %>%
-  preselect(replications = 500L) %>% 
-  plot()
-```
-
-
-
-Meta-regressions:
-
+### Vocabulary (Taken together)
 
 ```{r}
 df_v %>%
@@ -694,7 +687,106 @@ df_v %>%
     vi = EV, 
     data = ., 
     method = "REML",
+    mods = ~ CONT
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
     mods = ~ scale(Hours)
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
   )
 
 df_v %>%
@@ -721,7 +813,7 @@ df_v %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ Grade5
+    mods = ~ TTEC
   )
 
 df_v %>%
@@ -730,47 +822,343 @@ df_v %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ TTEC
+    mods = ~ TSTR
   )
 ```
 
-Only `type` is significant.
 
+### Vocabulary (VR only)
 
+```{r}
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ CONT
+  )
 
-### Listening Comprehension 
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
 
-Checking variable correlations:
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
 
-```{r, fig.asp = 1, fig.retina=2}
-p.mat <- ggcorrplot::cor_pmat(df_l %>% select(TMULT:Hours))
-df_l %>% 
-  select(TMULT:Hours) %>% 
-  cor(use = "pairwise.complete.obs") %>% 
-  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_v %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
+  )
 ```
 
 
-MetaForest:
 
-```{r, fig.retina=2}
-df_l %>% 
-  rename(vi = EV) %>%
-  mutate(stdid = stdid %>% as_factor()) %>% 
-  drop_na(Hours) %>% 
-  MetaForest(
-    formula = ES ~ .,
-    data = .,
-    study = "stdid"
-  ) %>%
-  preselect(replications = 500L) %>% 
-  plot()
+### Vocabulary (VS only)
+
+```{r}
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ CONT
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_v %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
+  )
 ```
 
 
-
-Meta-regressions:
-
+### Listening Comprehension (Taken together)
 
 ```{r}
 df_l %>%
@@ -779,7 +1167,25 @@ df_l %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ TRC
+    mods = ~ type
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ CONT
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
   )
 
 df_l %>%
@@ -797,7 +1203,7 @@ df_l %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ type
+    mods = ~ design
   )
 
 df_l %>%
@@ -806,7 +1212,16 @@ df_l %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ TMOR
+    mods = ~ grade
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
   )
 
 df_l %>%
@@ -824,7 +1239,7 @@ df_l %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ SmallGr
+    mods = ~ TVOC
   )
 
 df_l %>%
@@ -833,42 +1248,406 @@ df_l %>%
     vi = EV, 
     data = ., 
     method = "REML",
-    mods = ~ WholeCl
+    mods = ~ TSYN
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
   )
 ```
 
-TRC, type, TMOR, TMULT, SmallGr, WholeCl are significant.
 
-### Reading Comprehension 
+### Listening Comprehension (LR only)
 
-Checking variable correlations:
+```{r}
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ CONT
+  )
 
-```{r, fig.asp = 1, fig.retina=2}
-p.mat <- ggcorrplot::cor_pmat(df_r %>% select(TMULT:Hours))
-df_r %>% 
-  select(TMULT:Hours) %>% 
-  cor(use = "pairwise.complete.obs") %>% 
-  ggcorrplot::ggcorrplot(type = "lower", p.mat = p.mat, insig = "blank")
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_l %>%
+  filter(type == "LR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
+  )
 ```
 
 
-MetaForest:
 
-```{r, fig.retina=2}
-df_r %>% 
-  rename(vi = EV) %>%
-  mutate(stdid = stdid %>% as_factor()) %>% 
-  drop_na(Hours) %>% 
-  MetaForest(
-    formula = ES ~ .,
-    data = .,
-    study = "stdid"
-  ) %>%
-  preselect(replications = 500L) %>% 
-  plot()
+### Listening Comprehension (LS only)
+
+```{r}
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ CONT
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_l %>%
+  filter(type == "LS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
+  )
 ```
 
-Meta-regressions:
+
+### Reading Comprehension (Taken together)
 
 ```{r}
 df_r %>%
@@ -886,10 +1665,473 @@ df_r %>%
     vi = EV, 
     data = ., 
     method = "REML",
+    mods = ~ CONT
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
     mods = ~ TTEC
+  )
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
   )
 ```
 
-`type` and `TTEC` are significant.
 
+### Reading Comprehension (RR only)
+
+```{r}
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ CONT
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_r %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
+  )
+```
+
+
+
+### Reading Comprehension (RS only)
+
+```{r}
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ CONT
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ Duration
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ scale(Hours)
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ design
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grade
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ grouping
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMULT
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TVOC
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSYN
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TMOR
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TLC
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TRC
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TPAD
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TDD
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TTEC
+  )
+
+df_r %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    mods = ~ TSTR
+  )
+```
 
