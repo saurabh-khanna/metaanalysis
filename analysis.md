@@ -1,4 +1,4 @@
-Metaanalysis Script
+Meta-analysis Script
 ================
 Saurabh Khanna
 2020-04-23
@@ -459,8 +459,134 @@ df_clean %>% count(CONT)
 
 ``` r
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
-#df_clean %>% knitr::kable()
+
+df_clean %>% knitr::kable()
 ```
+
+| type | stdid       |          ES |        EV | TMULT | TVOC | TSYN | TMOR | TLC | TRC | TPAD | TDD | TTEC | TSTR | CONT | Duration | Hours | design | grade | grouping    |
+| :--: | :---------- | ----------: | --------: | ----: | ---: | ---: | ---: | --: | --: | ---: | --: | ---: | ---: | :--- | -------: | ----: | :----- | :---- | :---------- |
+|  AS  | Jones1      |   0.3371586 | 0.0025073 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    0 |    0 | BAU  |        1 |    95 | RCT    | 3-5   | Combination |
+|  AS  | Jones2      |   0.1152593 | 0.0019759 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    0 |    0 | BAU  |        1 |    95 | RCT    | 3-5   | Combination |
+|  AS  | Proc19      |   0.1139215 | 0.0167638 |     1 |    1 |    1 |    1 |   1 |   1 |    0 |   1 |    1 |    0 | BAU  |        1 |    20 | QED    | 3-5   | Small group |
+|  LR  | Apth1       |   0.2312520 | 0.0024144 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | K-2   | Whole class |
+|  LR  | ApthK       |   0.3771837 | 0.0025840 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | K-2   | Whole class |
+|  LR  | Baker       |   0.2651806 | 0.0312088 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | ALT  |        1 |    38 | RCT    | K-2   | Whole class |
+|  LR  | Conn183     |   0.0681798 | 0.0135373 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  LR  | Conn184     | \-0.0865421 | 0.0178965 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  LR  | Coyne10     |   0.3683911 | 0.0357745 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    18 | QED    | K-2   | Whole class |
+|  LR  | Coyne19     |   0.4067562 | 0.0025440 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        1 |    44 | RCT    | K-2   | Small group |
+|  LR  | Jiang1      |   0.7951549 | 0.0554539 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | K-2   | Whole class |
+|  LR  | Jiang2      |   0.1679589 | 0.0657273 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | K-2   | Whole class |
+|  LR  | Jiang3      |   0.5428986 | 0.0708219 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | 3-5   | Whole class |
+|  LR  | JiangK      |   0.6955669 | 0.0484587 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | K-2   | Whole class |
+|  LR  | Silver17aK  |   0.1225492 | 0.0222134 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    1 |    0 | BAU  |        0 |    10 | QED    | K-2   | Combination |
+|  LS  | ApthP       |   0.0176180 | 0.0014313 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | K-2   | Whole class |
+|  LS  | Baker       |   0.0990000 | 0.0241636 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | ALT  |        1 |    38 | RCT    | K-2   | Whole class |
+|  LS  | Conn183     | \-0.2189914 | 0.0653648 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  LS  | Conn184     | \-1.6440105 | 0.0492648 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  LS  | Nielsen     |   0.5156824 | 0.1941841 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    18 | QED    | K-2   | Small group |
+|  LS  | TongB       |   0.3306846 | 0.1133714 |     0 |    1 |    0 |    0 |   1 |   1 |    1 |   0 |    0 |    0 | BAU  |        1 |   100 | RCT    | K-2   | Combination |
+|  LS  | TongG       |   0.1531120 | 0.1388452 |     0 |    1 |    0 |    0 |   1 |   1 |    1 |   0 |    0 |    0 | BAU  |        1 |   100 | RCT    | K-2   | Combination |
+|  MR  | Apel1       |   2.4249393 | 0.5364876 |     0 |    0 |    0 |    1 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    13 | RCT    | K-2   | Small group |
+|  MR  | Apel2       |   0.6689962 | 0.1026682 |     0 |    0 |    0 |    1 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    13 | RCT    | K-2   | Small group |
+|  MR  | ApelK       |   0.9939616 | 0.1029765 |     0 |    0 |    0 |    1 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    13 | RCT    | K-2   | Small group |
+|  MR  | Brimo       |   0.5860487 | 0.6119338 |     0 |    0 |    0 |    1 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    12 | QED    | 3-5   | Small group |
+|  RR  | Apth3       |   0.1377019 | 0.0022997 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | 3-5   | Whole class |
+|  RR  | Berry       | \-0.3571446 | 1.2659224 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   1 |    0 |    1 | ALT  |        0 |     6 | QED    | 3-5   | Whole class |
+|  RR  | Dalt11      |   1.9049363 | 0.0906114 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    1 |    0 | ALT  |        1 |    20 | RCT    | 3-5   | Individual  |
+|  RR  | Graham      |   0.1519858 | 0.0156276 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    1 | BAU  |        0 |     9 | RCT    | 3-5   | Whole class |
+|  RR  | Silver17a4  |   0.8508342 | 0.0206818 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    1 |    0 | BAU  |        0 |    10 | QED    | 3-5   | Combination |
+|  RR  | VadSanHer15 |   0.2178669 | 0.0033594 |     0 |    1 |    0 |    0 |   0 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    35 | RCT    | 3-5   | Whole class |
+|  RS  | Apel1       |   0.3604871 | 0.1141001 |     0 |    0 |    0 |    1 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    13 | RCT    | K-2   | Small group |
+|  RS  | Apel2       | \-0.0919161 | 0.0850093 |     0 |    0 |    0 |    1 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    13 | RCT    | K-2   | Small group |
+|  RS  | Conn183     | \-0.0203567 | 0.0137530 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  RS  | Conn184     | \-0.0222525 | 0.0180729 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  RS  | Dalt11      |   1.0331095 | 0.0493694 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    1 |    0 | ALT  |        1 |    20 | RCT    | 3-5   | Individual  |
+|  RS  | Daunic      | \-0.2206484 | 0.0877731 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   1 |    0 |    0 | BAU  |        0 |     5 | QED    | K-2   | Small group |
+|  RS  | Gersten     |   0.1300000 | 0.0400000 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    NA | RCT    | K-2   | Whole class |
+|  RS  | Jones1      |   0.0537309 | 0.0018209 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    0 |    0 | BAU  |        1 |    95 | RCT    | 3-5   | Combination |
+|  RS  | Jones2      |   0.1929975 | 0.0018416 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    0 |    0 | BAU  |        1 |    95 | RCT    | 3-5   | Combination |
+|  RS  | Morris      |   0.2364356 | 0.0312791 |     1 |    1 |    1 |    1 |   0 |   0 |    1 |   0 |    0 |    1 | ALT  |        1 |    70 | RCT    | Both  | Small group |
+|  RS  | Proc11      | \-0.0436775 | 0.0172460 |     1 |    1 |    1 |    0 |   1 |   1 |    0 |   0 |    1 |    0 | BAU  |        1 |    27 | QED    | 3-5   | Individual  |
+|  RS  | Proc19      |   0.2331418 | 0.0191677 |     1 |    1 |    1 |    1 |   1 |   1 |    0 |   1 |    1 |    0 | BAU  |        1 |    20 | QED    | 3-5   | Small group |
+|  RS  | Silver17a4  | \-0.0014823 | 0.0075817 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    1 |    0 | BAU  |        0 |    10 | QED    | 3-5   | Combination |
+|  RS  | Silver17b4  | \-0.1127521 | 0.0182102 |     0 |    1 |    0 |    0 |   0 |   1 |    0 |   1 |    1 |    1 | BAU  |        1 |    20 | QED    | 3-5   | Combination |
+|  RS  | Simmons     | \-0.0648048 | 0.0056414 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    1 | BAU  |        1 |    27 | RCT    | 3-5   | Whole class |
+|  RS  | TongB       |   0.0172740 | 0.0931362 |     0 |    1 |    0 |    0 |   1 |   1 |    1 |   0 |    0 |    0 | BAU  |        1 |   100 | RCT    | K-2   | Combination |
+|  RS  | TongG       |   0.2822964 | 0.1091847 |     0 |    1 |    0 |    0 |   1 |   1 |    1 |   0 |    0 |    0 | BAU  |        1 |   100 | RCT    | K-2   | Combination |
+|  RS  | VadSanHer15 |   0.0500486 | 0.0033727 |     0 |    1 |    0 |    0 |   0 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    35 | RCT    | 3-5   | Whole class |
+|  SS  | Conn183     |   0.0700015 | 0.0173574 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  SS  | Conn184     | \-0.0217323 | 0.0239139 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  VR  | Apth1       |   0.7679293 | 0.0024274 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | K-2   | Whole class |
+|  VR  | Apth3       |   0.9032747 | 0.0028180 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | 3-5   | Whole class |
+|  VR  | ApthK       |   0.7963996 | 0.0028469 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | K-2   | Whole class |
+|  VR  | Arth1       |   0.4018396 | 0.1512635 |     1 |    1 |    1 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |     9 | QED    | K-2   | Whole class |
+|  VR  | Arth2       |   1.0824260 | 0.3962804 |     1 |    1 |    1 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |     9 | QED    | K-2   | Whole class |
+|  VR  | Arth3       |   0.8095698 | 0.1674121 |     1 |    1 |    1 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |     9 | QED    | 3-5   | Whole class |
+|  VR  | ArthK       |   0.0786293 | 0.2387246 |     1 |    1 |    1 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |     9 | QED    | K-2   | Whole class |
+|  VR  | Aug         |   2.1695243 | 0.0192149 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        1 |    25 | WSD    | K-2   | Whole class |
+|  VR  | Baker       |   1.0516546 | 0.0525750 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | ALT  |        1 |    38 | RCT    | K-2   | Whole class |
+|  VR  | Berry       |   0.8616891 | 2.8024506 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   1 |    0 |    1 | ALT  |        0 |     6 | QED    | 3-5   | Whole class |
+|  VR  | Conn19      | \-0.1659631 | 0.0143786 |     1 |    1 |    0 |    1 |   0 |   0 |    0 |   0 |    1 |    1 | BAU  |        0 |     4 | RCT    | 3-5   | Individual  |
+|  VR  | Coyne10     |   6.9739699 | 0.4738991 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    18 | QED    | K-2   | Whole class |
+|  VR  | Coyne19     |   8.0164868 | 0.1170897 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        1 |    44 | RCT    | K-2   | Small group |
+|  VR  | Dalt11      |   1.2606480 | 0.0501652 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    1 |    0 | ALT  |        1 |    20 | RCT    | 3-5   | Individual  |
+|  VR  | Fillippini  |   0.6088208 | 0.0802535 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        0 |     7 | RCT    | K-2   | Small group |
+|  VR  | Goldstein   |   2.8023543 | 0.1218541 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    1 |    1 | ALT  |        1 |    72 | RCT    | Both  | Individual  |
+|  VR  | Graham      |   1.6509504 | 0.0373717 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    1 | BAU  |        0 |     9 | RCT    | 3-5   | Whole class |
+|  VR  | Hass        |   1.6710769 | 0.1039257 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    12 | RCT    | K-2   | Small group |
+|  VR  | Jiang1      |   3.3726157 | 0.0798665 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | K-2   | Whole class |
+|  VR  | Jiang2      |   2.2260077 | 0.0525373 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | K-2   | Whole class |
+|  VR  | Jiang3      |   2.5913270 | 0.0562224 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | 3-5   | Whole class |
+|  VR  | JiangK      |   2.9412143 | 0.0592122 |     1 |    1 |    1 |    1 |   1 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    50 | RCT    | K-2   | Whole class |
+|  VR  | Jones1      |   0.2283174 | 0.0021398 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    0 |    0 | BAU  |        1 |    95 | RCT    | 3-5   | Combination |
+|  VR  | Jones2      |   0.1901639 | 0.0020985 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    0 |    0 | BAU  |        1 |    95 | RCT    | 3-5   | Combination |
+|  VR  | Mancilla    |   1.0153708 | 0.1377186 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    0 |    0 | BAU  |        1 |    25 | QED    | 3-5   | Whole class |
+|  VR  | McK         |   3.2932945 | 0.2459157 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        0 |     2 | WSD    | K-2   | Whole class |
+|  VR  | Nelson      |   0.5405571 | 0.0580920 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        1 |    33 | RCT    | K-2   | Small group |
+|  VR  | Neuman      |   0.5346265 | 0.0288756 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    20 | RCT    | K-2   | Whole class |
+|  VR  | Nielsen     |   2.7051948 | 0.5095005 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    18 | QED    | K-2   | Small group |
+|  VR  | Pow         |   0.2253011 | 0.0526278 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |     3 | RCT    | K-2   | Individual  |
+|  VR  | Proc11      |   0.9242303 | 0.0256500 |     1 |    1 |    1 |    0 |   1 |   1 |    0 |   0 |    1 |    0 | BAU  |        1 |    27 | QED    | 3-5   | Individual  |
+|  VR  | Puhal       |   2.6937576 | 0.5142966 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        0 |     5 | RCT    | K-2   | Combination |
+|  VR  | Pullen      |   0.4786691 | 0.0500405 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        0 |     2 | QED    | K-2   | Combination |
+|  VR  | Silver17a4  |   0.4220216 | 0.0079434 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    1 |    0 | BAU  |        0 |    10 | QED    | 3-5   | Combination |
+|  VR  | Silver17aK  |   0.3868128 | 0.0091241 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    1 |    0 | BAU  |        0 |    10 | QED    | K-2   | Combination |
+|  VR  | Silver17b4  |   0.8424442 | 0.0222265 |     0 |    1 |    0 |    0 |   0 |   1 |    0 |   1 |    1 |    1 | BAU  |        1 |    20 | QED    | 3-5   | Combination |
+|  VR  | Silver17bK  |   1.4421285 | 0.0345476 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   1 |    1 |    1 | BAU  |        1 |    20 | QED    | K-2   | Combination |
+|  VR  | Simmons     |   7.0009329 | 0.1391228 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    1 | BAU  |        1 |    27 | RCT    | 3-5   | Whole class |
+|  VR  | VadSan15    |   0.2613394 | 0.1065636 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        0 |     1 | RCT    | K-2   | Individual  |
+|  VR  | VadSan16    |   0.3089192 | 0.0572620 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        0 |    14 | RCT    | K-2   | Individual  |
+|  VR  | VadSanHer15 |   1.2747785 | 0.0053252 |     0 |    1 |    0 |    0 |   0 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    35 | RCT    | 3-5   | Whole class |
+|  VR  | VadSanNel15 |   1.2277100 | 0.0464508 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        1 |    40 | RCT    | K-2   | Small group |
+|  VR  | Wood18      |   0.2654639 | 0.0236715 |     1 |    1 |    0 |    1 |   0 |   0 |    0 |   0 |    1 |    0 | ALT  |        1 |    30 | RCT    | K-2   | Whole class |
+|  VR  | Wright      |   1.5070059 | 0.0483573 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   1 |    0 |    0 | BAU  |        0 |    15 | QED    | K-2   | Whole class |
+|  VR  | Zipoli      |   0.8411806 | 0.0204632 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        0 |    18 | WSD    | K-2   | Combination |
+|  VS  | ApthP       |   0.0080847 | 0.0015520 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    30 | RCT    | K-2   | Whole class |
+|  VS  | Conn183     | \-0.0164879 | 0.0629945 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  VS  | Conn184     |   0.1197656 | 0.0951981 |     0 |    1 |    0 |    0 |   1 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    22 | RCT    | 3-5   | Small group |
+|  VS  | Coyne10     |   0.1061789 | 0.0361622 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    18 | QED    | K-2   | Whole class |
+|  VS  | Coyne19     |   0.1034697 | 0.0049060 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | ALT  |        1 |    44 | RCT    | K-2   | Small group |
+|  VS  | Dalt11      |   0.1024531 | 0.0419712 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    1 |    0 | ALT  |        1 |    20 | RCT    | 3-5   | Individual  |
+|  VS  | Daunic      |   0.0580749 | 0.0898036 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   1 |    0 |    0 | BAU  |        0 |     5 | QED    | K-2   | Small group |
+|  VS  | Gersten     |   0.3300000 | 0.0500000 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        1 |    NA | RCT    | K-2   | Whole class |
+|  VS  | Hass        |   0.4835901 | 0.0534860 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    12 | RCT    | K-2   | Small group |
+|  VS  | Huang       |   0.4786637 | 0.1040172 |     1 |    1 |    1 |    0 |   0 |   0 |    0 |   0 |    1 |    0 | ALT  |        1 |    80 | QED    | K-2   | Whole class |
+|  VS  | Jayanthi    | \-0.0430000 | 0.0010000 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    1 | BAU  |        1 |    NA | RCT    | K-2   | Whole class |
+|  VS  | Nelson      | \-0.4798887 | 0.0317414 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        1 |    33 | RCT    | K-2   | Small group |
+|  VS  | Neuman      | \-0.0712942 | 0.0256859 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    1 |    0 | BAU  |        1 |    20 | RCT    | K-2   | Whole class |
+|  VS  | Nielsen     |   0.1435089 | 0.2058622 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   0 |    0 |    0 | BAU  |        0 |    18 | QED    | K-2   | Small group |
+|  VS  | Proc11      |   0.0343903 | 0.0171422 |     1 |    1 |    1 |    0 |   1 |   1 |    0 |   0 |    1 |    0 | BAU  |        1 |    27 | QED    | 3-5   | Individual  |
+|  VS  | Silver17aK  | \-0.0393292 | 0.0079704 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   1 |    1 |    0 | BAU  |        0 |    10 | QED    | K-2   | Combination |
+|  VS  | Silver17b4  |   0.1398774 | 0.0182383 |     0 |    1 |    0 |    0 |   0 |   1 |    0 |   1 |    1 |    1 | BAU  |        1 |    20 | QED    | 3-5   | Combination |
+|  VS  | Silver17bK  | \-0.1159971 | 0.0215981 |     0 |    1 |    0 |    0 |   1 |   0 |    0 |   1 |    1 |    1 | BAU  |        1 |    20 | QED    | K-2   | Combination |
+|  VS  | Simmons     | \-0.0106594 | 0.0054480 |     0 |    1 |    0 |    0 |   0 |   0 |    0 |   0 |    0 |    1 | BAU  |        1 |    27 | RCT    | 3-5   | Whole class |
+|  VS  | TongB       |   0.6892086 | 0.1115444 |     0 |    1 |    0 |    0 |   1 |   1 |    1 |   0 |    0 |    0 | BAU  |        1 |   100 | RCT    | K-2   | Combination |
+|  VS  | TongG       |   0.3193906 | 0.1387398 |     0 |    1 |    0 |    0 |   1 |   1 |    1 |   0 |    0 |    0 | BAU  |        1 |   100 | RCT    | K-2   | Combination |
+|  VS  | VadSan16    |   0.2884231 | 0.0438190 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        0 |    14 | RCT    | K-2   | Individual  |
+|  VS  | VadSanHer15 |   0.0648028 | 0.0033742 |     0 |    1 |    0 |    0 |   0 |   1 |    0 |   0 |    0 |    0 | BAU  |        1 |    35 | RCT    | 3-5   | Whole class |
+|  VS  | VadSanNel15 |   0.0111751 | 0.0142347 |     0 |    1 |    0 |    0 |   0 |   0 |    1 |   0 |    0 |    0 | ALT  |        1 |    40 | RCT    | K-2   | Small group |
+|  VS  | Wood18      |   0.1214477 | 0.0151603 |     1 |    1 |    0 |    1 |   0 |   0 |    0 |   0 |    1 |    0 | ALT  |        1 |    30 | RCT    | K-2   | Whole class |
 
 ### Summary stats
 

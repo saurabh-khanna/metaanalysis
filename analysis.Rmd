@@ -1,5 +1,5 @@
 ---
-title: "Metaanalysis Script"
+title: "Meta-analysis Script"
 author: "Saurabh Khanna"
 date: "`r Sys.Date()`"
 output: 
@@ -364,7 +364,8 @@ df_clean <-
 df_clean %>% count(CONT)
 
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
-#df_clean %>% knitr::kable()
+
+df_clean %>% knitr::kable()
 ```
 
 ### Summary stats
