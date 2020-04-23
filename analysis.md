@@ -17,6 +17,10 @@ Saurabh Khanna
       - [Morphology](#morphology)
       - [Syntax](#syntax)
       - [Academic Learning](#academic-learning)
+  - [MetaForest plots](#metaforest-plots)
+      - [Vocabulary](#vocabulary-1)
+      - [Listening Comprehension](#listening-comprehension-1)
+      - [Reading Comprehension](#reading-comprehension-1)
   - [Moderator effects](#moderator-effects)
       - [Vocabulary (Taken together)](#vocabulary-taken-together)
       - [Vocabulary (VR only)](#vocabulary-vr-only)
@@ -39,14 +43,14 @@ Saurabh Khanna
 library(tidyverse)
 ```
 
-    ## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.0 ──
+    ## ── Attaching packages ─────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
 
     ## ✓ ggplot2 3.3.0     ✓ purrr   0.3.4
     ## ✓ tibble  3.0.0     ✓ dplyr   0.8.5
     ## ✓ tidyr   1.0.2     ✓ stringr 1.4.0
     ## ✓ readr   1.3.1     ✓ forcats 0.5.0
 
-    ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+    ## ── Conflicts ────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
     ## x dplyr::filter() masks stats::filter()
     ## x dplyr::lag()    masks stats::lag()
 
@@ -68,10 +72,26 @@ library(metafor)
     ## and introduction to the package please type: help(metafor).
 
 ``` r
-#library(robumeta)
 library(MAd)
-#library(metaforest)
+library(metaforest)
+```
 
+    ## Loading required package: ranger
+
+    ## Loading required package: data.table
+
+    ## 
+    ## Attaching package: 'data.table'
+
+    ## The following objects are masked from 'package:dplyr':
+    ## 
+    ##     between, first, last
+
+    ## The following object is masked from 'package:purrr':
+    ## 
+    ##     transpose
+
+``` r
 # Parameters
 data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
 ```
@@ -1204,6 +1224,61 @@ df_a %>%
 ```
 
 <img src="analysis_files/figure-gfm/unnamed-chunk-16-1.png" width="672" />
+
+## MetaForest plots
+
+### Vocabulary
+
+``` r
+df_v %>%
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-17-1.png" width="672" />
+
+### Listening Comprehension
+
+``` r
+df_l %>%
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-18-1.png" width="672" />
+
+### Reading Comprehension
+
+``` r
+df_r %>%
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-19-1.png" width="672" />
 
 ## Moderator effects
 

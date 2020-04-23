@@ -16,9 +16,8 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 library(tidyverse)
 library(readxl)
 library(metafor)
-#library(robumeta)
 library(MAd)
-#library(metaforest)
+library(metaforest)
 
 # Parameters
 data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
@@ -665,6 +664,56 @@ df_a %>%
     bg = "grey",
     lwd = 1.5
   )
+```
+
+
+## MetaForest plots
+
+### Vocabulary
+
+```{r, fig.retina=2}
+df_v %>%
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+### Listening Comprehension
+
+```{r, fig.retina=2}
+df_l %>%
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
+```
+
+### Reading Comprehension
+
+```{r, fig.retina=2}
+df_r %>%
+  rename(vi = EV) %>%
+  mutate(stdid = stdid %>% as_factor()) %>% 
+  drop_na(Hours) %>% 
+  MetaForest(
+    formula = ES ~ .,
+    data = .,
+    study = "stdid"
+  ) %>%
+  preselect(replications = 500L) %>% 
+  plot()
 ```
 
 
