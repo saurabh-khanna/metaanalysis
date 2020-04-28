@@ -207,7 +207,7 @@ for (mt in 1:4) {
       m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-      ri = rep(0.5, 95),
+      ri = rep(0.5, 86),
       var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
     ) 
 }
@@ -228,7 +228,7 @@ for (mc in 1:4) {
       m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-      ri = rep(0.5, 95),
+      ri = rep(0.5, 86),
       var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
     ) 
 }

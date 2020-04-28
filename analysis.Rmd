@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 
 ```{r}
@@ -346,7 +346,6 @@ df_clean <-
       (SmallGr == 1) | (Indiv == 1) ~ "Small or Indiv",
       TRUE ~ NA_character_
     ) %>% as_factor(),
-    type = type %>% as_factor(),
     CONT = CONT %>% factor(labels = c("BAU", "ALT")),
     TCOM = if_else(TLC == 1 | TRC == 1, 1, 0)
   ) %>%
@@ -354,11 +353,12 @@ df_clean <-
   left_join(
     read_xlsx(data_file, sheet = "citations"),
     by = c("type", "stdid")
-  )
+  ) %>% 
+  mutate(type = type %>% as_factor())
 
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
-#df_clean %>% summary()
-df_clean %>% knitr::kable()
+df_clean %>% summary()
+#df_clean %>% knitr::kable()
 ```
 
 ### Summary stats
@@ -517,7 +517,7 @@ model_1 <-
     vi = EV, 
     data = ., 
     method = "REML",
-    slab = stdid
+    slab = citation
   )
 
 model_2 <-
@@ -663,6 +663,311 @@ df_a %>%
 
 
 
+## Moderator Analysis
+
+### Vocabulary - overall
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ design)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grouping)
+```
+
+### Vocabulary - overall (Controlling for type)
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMULT + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TVOC + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSYN + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMOR + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TLC + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TRC + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TCOM + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TPAD + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ LowIncome + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ EL + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TDD + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TTEC + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSTR + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ CONT + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Duration + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Hours + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ design + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grade + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grouping + type)
+```
+
+
+### Vocabulary - VR
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ design)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ grouping)
+```
+
+
+### Vocabulary - VS
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ design)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ grouping)
+```
+
+
+
+### Listening Comprehension - overall
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grouping)
+```
+
+### Listening Comprehension - overall (Controlling for type)
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMULT + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TVOC + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSYN + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMOR + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TLC + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TRC + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TCOM + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TPAD + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ LowIncome + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ EL + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TDD + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TTEC + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSTR + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ CONT + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Duration + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Hours + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grade + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grouping + type)
+```
+
+
+### Listening Comprehension - LR
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ design)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ grouping)
+```
+
+
+### Listening Comprehension - LS
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ design)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ grouping)
+```
+
+
+### Reading Comprehension - overall
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ design)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grouping)
+```
+
+### Reading Comprehension - overall (Controlling for type)
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMULT + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TVOC + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSYN + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMOR + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TLC + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TRC + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TCOM + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TPAD + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ LowIncome + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ EL + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TDD + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TTEC + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSTR + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ CONT + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Duration + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Hours + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ design + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grade + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grouping + type)
+```
+
+
+### Reading Comprehension - RR
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ design)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ grouping)
+```
+
+
+### Reading Comprehension - RS
+
+```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TMULT)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TVOC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TSYN)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TMOR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TLC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TRC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TCOM)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TPAD)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ LowIncome)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ EL)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TDD)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TTEC)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ CONT)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ Duration)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ Hours)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ design)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ grade)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ grouping)
+```
+
+
+
+
 ## MetaForest plots
 
 ### Vocabulary
@@ -712,4 +1017,7 @@ df_r %>%
   preselect(replications = 500L) %>% 
   plot()
 ```
+
+
+
 
