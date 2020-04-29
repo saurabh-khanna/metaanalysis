@@ -324,7 +324,7 @@ cor_es <-
 df_clean <-
   df_append %>%
   group_by(type, stdid) %>%
-  summarize_at(vars(LowIncome:Hours), ~ round(mean(.))) %>%
+  summarize_at(vars(Content:Hours), ~ round(mean(.))) %>%
   ungroup() %>%
   left_join(cor_es, by = c("type", "stdid")) %>% 
   select(type, stdid, ES, EV, everything()) %>% 
@@ -341,11 +341,9 @@ df_clean <-
       TRUE ~ "Both"
     ) %>% as_factor(),
     grouping = case_when(
-      ((WholeCl + SmallGr) == 2) | ((WholeCl + Indiv) == 2) ~ "Combination",
-      WholeCl == 1 ~ "Whole class",
-      (SmallGr == 1) | (Indiv == 1) ~ "Small or Indiv",
-      TRUE ~ NA_character_
-    ) %>% as_factor(),
+      (WholeCl == 1) & (SmallGr == 0) & (Indiv == 0) ~ 1,
+      TRUE ~ 0
+    ),
     CONT = CONT %>% factor(labels = c("BAU", "ALT")),
     TCOM = if_else(TLC == 1 | TRC == 1, 1, 0)
   ) %>%
@@ -354,11 +352,14 @@ df_clean <-
     read_xlsx(data_file, sheet = "citations"),
     by = c("type", "stdid")
   ) %>% 
-  mutate(type = type %>% as_factor())
+  mutate(
+    type = type %>% as_factor(),
+    citation = if_else(str_detect(type, "S$"), str_c(citation, " "), citation)
+  )
 
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
-df_clean %>% summary()
-#df_clean %>% knitr::kable()
+#df_clean %>% summary()
+df_clean %>% knitr::kable()
 ```
 
 ### Summary stats
@@ -385,13 +386,13 @@ df_a <- df_clean %>% filter(type == "AS")
 ```{r, out.width="100%", out.height="100%", fig.asp=2}
 model_1 <-
   df_v %>%
-  arrange(desc(type), desc(ES)) %>% 
+  arrange(desc(type), desc(ES)) %>%
   rma(
     yi = ES, 
     vi = EV, 
     data = ., 
     method = "REML",
-    slab = stdid
+    slab = citation
   )
 
 model_2 <-
@@ -428,7 +429,7 @@ forest(
   xlab = "Vocabulary",
   addcred = T, 
   header = T,
-  #xlim = c(-5, 8),
+  xlim = c(-15, 18),
   ylim = c(-1, 85),
   rows = c(3:26, 34:77),
   pch = 21,
@@ -436,7 +437,7 @@ forest(
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-11.5, c(29, 80), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-15, c(29, 80), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 32, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
 ```
@@ -669,6 +670,8 @@ df_a %>%
 
 ```{r, message=F, warning=F}
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSYN)
@@ -693,6 +696,8 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grouping)
 ### Vocabulary - overall (Controlling for type)
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Content + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ PD + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMULT + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TVOC + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSYN + type)
@@ -718,6 +723,8 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grouping + type)
 ### Vocabulary - VR
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TSYN)
@@ -743,6 +750,8 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
 ### Vocabulary - VS
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TSYN)
@@ -770,6 +779,8 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mod
 
 ```{r, message=F, warning=F}
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSYN)
@@ -794,6 +805,8 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grouping)
 ### Listening Comprehension - overall (Controlling for type)
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Content + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ PD + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMULT + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TVOC + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSYN + type)
@@ -819,6 +832,8 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grouping + type)
 ### Listening Comprehension - LR
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TSYN)
@@ -844,6 +859,8 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ### Listening Comprehension - LS
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TSYN)
@@ -870,6 +887,8 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mod
 
 ```{r, message=F, warning=F}
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSYN)
@@ -894,6 +913,8 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grouping)
 ### Reading Comprehension - overall (Controlling for type)
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Content + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ PD + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMULT + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TVOC + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSYN + type)
@@ -919,6 +940,8 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grouping + type)
 ### Reading Comprehension - RR
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TSYN)
@@ -944,6 +967,8 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ### Reading Comprehension - RS
 
 ```{r, message=F, warning=F}
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ Content)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TMULT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TVOC)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TSYN)
