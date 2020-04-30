@@ -17,6 +17,12 @@ Saurabh Khanna
       - [Morphology](#morphology)
       - [Syntax](#syntax)
       - [Academic Learning](#academic-learning)
+  - [Delayed Tests Analysis](#delayed-tests-analysis)
+      - [Calculate ES](#calculate-es)
+      - [Combining ES](#combining-es)
+      - [Forest plots - Vocabulary](#forest-plots---vocabulary)
+      - [Forest plots - Reading
+        Comprehension](#forest-plots---reading-comprehension)
   - [Moderator Analysis](#moderator-analysis)
       - [Vocabulary - overall](#vocabulary---overall)
       - [Vocabulary - overall (Controlling for
@@ -1138,6 +1144,404 @@ df_a %>%
 ```
 
 <img src="analysis_files/figure-gfm/unnamed-chunk-16-1.png" width="672" />
+
+## Delayed Tests Analysis
+
+### Calculate ES
+
+#### Delay only
+
+``` r
+df_delay <-
+  bind_rows(
+    "VR" = read_xlsx(data_file, sheet = "VR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VR", "")),
+    "VS" = read_xlsx(data_file, sheet = "VS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VS", "")),
+    "RR" = read_xlsx(data_file, sheet = "RR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")),
+    "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
+    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
+    "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(!is.na(TM1delay) & is.na(TM1pre)) %>% 
+  select_if(~ any(!is.na(.))) %>%
+  select(AUTYR, type, sort(current_vars()))
+
+
+for (m in 1:4) {
+  if (
+    !(str_glue("TM{m}delay") %in% colnames(df_delay)) | 
+    !(str_glue("CM{m}delay") %in% colnames(df_delay))
+  ) {
+    next
+  }
+  df_delay <-
+    escalc(
+      data = df_delay,
+      measure = "SMD",
+      m1i = df_delay[, str_c("TM", m, "delay")] %>% unlist(),
+      m2i = df_delay[, str_c("CM", m, "delay")] %>% unlist(),
+      sd1i = df_delay[, str_c("TS", m, "delay")] %>% unlist(),
+      sd2i = df_delay[, str_c("CS", m, "delay")] %>% unlist(),
+      n1i = df_delay[, str_c("TN", m, "delay")] %>% unlist(),
+      n2i = df_delay[, str_c("CN", m, "delay")] %>% unlist(),
+      var.names = c(str_glue("ES_{m}"), str_glue("EV_{m}"))
+    ) 
+}
+
+
+df_delay <-
+  df_delay %>% 
+  select(AUTYR, type, starts_with("ES")) %>% 
+  pivot_longer(cols = starts_with("ES"), names_to = "num", values_to = "ES", values_drop_na = T) %>%
+  mutate(num = str_sub(num, 4)) %>% 
+  left_join(
+    df_delay %>% 
+      select(AUTYR, type, starts_with("EV")) %>% 
+      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
+      mutate(num = str_sub(num, 4)),
+    by = c("AUTYR", "type", "num")
+  ) %>% 
+  select(-num)
+```
+
+#### Pre-Delay
+
+``` r
+df_predelay <-
+  bind_rows(
+    "VR" = read_xlsx(data_file, sheet = "VR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VR", "")),
+    "VS" = read_xlsx(data_file, sheet = "VS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "VS", "")),
+    "RR" = read_xlsx(data_file, sheet = "RR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RR", "")),
+    "RS" = read_xlsx(data_file, sheet = "RS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "RS", "")),
+    "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
+    "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
+    "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
+    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
+    "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
+    .id = "type"
+  ) %>% 
+  drop_na(AUTYR) %>%
+  filter(!is.na(TM1delay)) %>% 
+  select_if(~ any(!is.na(.))) %>%
+  select(AUTYR, type, sort(current_vars()))
+
+
+# treatment (delay-pre)
+for (mt in 1:4) {
+  if (
+    !(str_glue("TM{mt}delay") %in% colnames(df_predelay)) | 
+    !(str_glue("TM{mt}pre") %in% colnames(df_predelay))
+  ) {
+    next
+  }
+  df_predelay <-
+    escalc(
+      data = df_predelay,
+      measure = "SMCR",
+      m1i = df_predelay[, str_c("TM", mt, "delay")] %>% unlist(),
+      m2i = df_predelay[, str_c("TM", mt, "pre")] %>% unlist(),
+      sd1i = df_predelay[, str_c("TS", mt, "pre")] %>% unlist(),
+      ni = df_predelay[, str_c("TN", mt, "delay")] %>% unlist(),
+      ri = rep(0.5, 13),
+      var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
+    ) 
+}
+
+# control (delay-pre)
+for (mc in 1:4) {
+  if (
+    !(str_glue("CM{mc}delay") %in% colnames(df_predelay)) | 
+    !(str_glue("CM{mc}pre") %in% colnames(df_predelay))
+  ) {
+    next
+  }
+  df_predelay <-
+    escalc(
+      data = df_predelay,
+      measure = "SMCR",
+      m1i = df_predelay[, str_c("CM", mc, "delay")] %>% unlist(),
+      m2i = df_predelay[, str_c("CM", mc, "pre")] %>% unlist(),
+      sd1i = df_predelay[, str_c("CS", mc, "pre")] %>% unlist(),
+      ni = df_predelay[, str_c("CN", mc, "delay")] %>% unlist(),
+      ri = rep(0.5, 13),
+      var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
+    ) 
+}
+
+
+# ES and EV taken together
+for (m in 1:4) {
+  if (
+    !(str_glue("TES_TM{m}") %in% colnames(df_predelay)) | 
+    !(str_glue("TEV_TM{m}") %in% colnames(df_predelay)) |
+    !(str_glue("CES_CM{m}") %in% colnames(df_predelay)) | 
+    !(str_glue("CEV_CM{m}") %in% colnames(df_predelay))
+  ) {
+    next
+  }
+  # subtracting effect size
+  df_predelay[, str_c("ES_", m)] <- 
+    (df_predelay[, str_c("TES_TM", m)] %>% unlist()) -
+    (df_predelay[, str_c("CES_CM", m)] %>% unlist())
+  # adding variance
+  df_predelay[, str_c("EV_", m)] <- 
+    (df_predelay[, str_c("TEV_TM", m)] %>% unlist()) +
+    (df_predelay[, str_c("CEV_CM", m)] %>% unlist())
+}
+
+
+df_predelay <-
+  df_predelay %>% 
+  select(AUTYR, type, starts_with("ES")) %>% 
+  pivot_longer(cols = starts_with("ES"), names_to = "num", values_to = "ES", values_drop_na = T) %>%
+  mutate(num = str_sub(num, 4)) %>% 
+  left_join(
+    df_predelay %>% 
+      select(AUTYR, type, starts_with("EV")) %>% 
+      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
+      mutate(num = str_sub(num, 4)),
+    by = c("AUTYR", "type", "num")
+  ) %>% 
+  select(-num)
+```
+
+### Combining ES
+
+``` r
+df_clean_delay <- 
+  bind_rows(df_delay, df_predelay) %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%
+  mutate(stdid = if_else(is.na(stdid), "Nelson11FU", stdid)) %>% 
+  arrange(type, stdid) %>%
+  select(type, stdid, ES, EV) %>%
+  unite("type_stdid", c("type", "stdid")) %>% 
+  agg(id = type_stdid, es = ES, var = EV, method = "BHHR", data = .) %>% 
+  separate(id, c("type", "stdid")) %>% 
+  rename(ES = es, EV = var) %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "citations"),
+    by = c("type", "stdid")
+  ) %>% 
+  mutate(
+    citation = if_else(str_detect(type, "S$"), str_c(citation, " "), citation)
+  )
+
+df_clean_delay %>% summary()
+```
+
+    ##      type              stdid                 ES                 EV         
+    ##  Length:11          Length:11          Min.   :0.002612   Min.   :0.01543  
+    ##  Class :character   Class :character   1st Qu.:0.198064   1st Qu.:0.02676  
+    ##  Mode  :character   Mode  :character   Median :0.338542   Median :0.03848  
+    ##                                        Mean   :0.766881   Mean   :0.10418  
+    ##                                        3rd Qu.:1.057405   3rd Qu.:0.07843  
+    ##                                        Max.   :2.921499   Max.   :0.64887  
+    ##    citation        
+    ##  Length:11         
+    ##  Class :character  
+    ##  Mode  :character  
+    ##                    
+    ##                    
+    ## 
+
+``` r
+rm(df_delay, df_predelay)
+```
+
+### Forest plots - Vocabulary
+
+``` r
+model_1 <-
+  df_clean_delay %>% 
+  filter(type %in% c("VR", "VS")) %>% 
+  arrange(desc(type), desc(ES)) %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = citation
+  )
+
+model_2 <-
+  df_clean_delay %>% 
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+model_3 <-
+  df_clean_delay %>% 
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+model_1
+```
+
+    ## 
+    ## Random-Effects Model (k = 9; tau^2 estimator: REML)
+    ## 
+    ## tau^2 (estimated amount of total heterogeneity): 0.6038 (SE = 0.3442)
+    ## tau (square root of estimated tau^2 value):      0.7770
+    ## I^2 (total heterogeneity / total variability):   92.99%
+    ## H^2 (total variability / sampling variability):  14.27
+    ## 
+    ## Test for Heterogeneity:
+    ## Q(df = 8) = 82.0792, p-val < .0001
+    ## 
+    ## Model Results:
+    ## 
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.7348  0.2779  2.6438  0.0082  0.1901  1.2795  ** 
+    ## 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+model_2
+```
+
+    ## 
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
+    ## 
+    ## tau^2 (estimated amount of total heterogeneity): 0.8172 (SE = 0.5954)
+    ## tau (square root of estimated tau^2 value):      0.9040
+    ## I^2 (total heterogeneity / total variability):   92.05%
+    ## H^2 (total variability / sampling variability):  12.59
+    ## 
+    ## Test for Heterogeneity:
+    ## Q(df = 5) = 47.8553, p-val < .0001
+    ## 
+    ## Model Results:
+    ## 
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   1.0512  0.3974  2.6451  0.0082  0.2723  1.8302  ** 
+    ## 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+model_3
+```
+
+    ## 
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
+    ## 
+    ## tau^2 (estimated amount of total heterogeneity): 0.0496 (SE = 0.0805)
+    ## tau (square root of estimated tau^2 value):      0.2227
+    ## I^2 (total heterogeneity / total variability):   63.83%
+    ## H^2 (total variability / sampling variability):  2.76
+    ## 
+    ## Test for Heterogeneity:
+    ## Q(df = 2) = 4.8472, p-val = 0.0886
+    ## 
+    ## Model Results:
+    ## 
+    ## estimate      se    zval    pval    ci.lb   ci.ub 
+    ##   0.1651  0.1631  1.0124  0.3113  -0.1546  0.4848    
+    ## 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+forest(
+  model_1,
+  xlab = "Vocabulary - Delayed effects",
+  addcred = T, 
+  header = T,
+  xlim = c(-9, 9),
+  ylim = c(-1, 23),
+  rows = c(3:5, 12:17),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+op <- par(cex = 0.75, font = 4)
+text(-9, c(7, 19), pos = 4, c("Standardized Measure", "Custom Measure"))
+addpoly(model_2, row = 10, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-21-1.png" width="100%" height="100%" />
+
+### Forest plots - Reading Comprehension
+
+``` r
+df_clean_delay %>% 
+  filter(type %in% c("RR", "RS")) %>% 
+  arrange(desc(type), desc(ES)) %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = citation
+  )
+```
+
+    ## 
+    ## Random-Effects Model (k = 2; tau^2 estimator: REML)
+    ## 
+    ## tau^2 (estimated amount of total heterogeneity): 0 (SE = 0.0329)
+    ## tau (square root of estimated tau^2 value):      0
+    ## I^2 (total heterogeneity / total variability):   0.00%
+    ## H^2 (total variability / sampling variability):  1.00
+    ## 
+    ## Test for Heterogeneity:
+    ## Q(df = 1) = 0.0341, p-val = 0.8534
+    ## 
+    ## Model Results:
+    ## 
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.3518  0.1016  3.4638  0.0005  0.1527  0.5508  *** 
+    ## 
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
+df_clean_delay %>% 
+  filter(type %in% c("RR", "RS")) %>% 
+  arrange(desc(type), desc(ES)) %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = citation
+  ) %>% 
+  forest(
+    xlab = "Reading Comprehension - Delayed effects",
+    addcred = T, 
+    header = T,
+    pch = 21,
+    bg = "grey",
+    lwd = 1.5
+  )
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-22-1.png" width="100%" height="100%" />
 
 ## Moderator Analysis
 
@@ -8288,7 +8692,7 @@ df_v %>%
   plot()
 ```
 
-<img src="analysis_files/figure-gfm/unnamed-chunk-29-1.png" width="672" />
+<img src="analysis_files/figure-gfm/unnamed-chunk-35-1.png" width="672" />
 
 ### Listening Comprehension
 
@@ -8306,7 +8710,7 @@ df_l %>%
   plot()
 ```
 
-<img src="analysis_files/figure-gfm/unnamed-chunk-30-1.png" width="672" />
+<img src="analysis_files/figure-gfm/unnamed-chunk-36-1.png" width="672" />
 
 ### Reading Comprehension
 
@@ -8324,4 +8728,4 @@ df_r %>%
   plot()
 ```
 
-<img src="analysis_files/figure-gfm/unnamed-chunk-31-1.png" width="672" />
+<img src="analysis_files/figure-gfm/unnamed-chunk-37-1.png" width="672" />
