@@ -358,8 +358,8 @@ df_clean <-
   )
 
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
-#df_clean %>% summary()
-df_clean %>% knitr::kable()
+df_clean %>% summary()
+#df_clean %>% knitr::kable()
 ```
 
 ### Summary stats
@@ -383,7 +383,7 @@ df_a <- df_clean %>% filter(type == "AS")
 
 ### Vocabulary
 
-```{r, out.width="100%", out.height="100%", fig.asp=2}
+```{r}
 model_1 <-
   df_v %>%
   arrange(desc(type), desc(ES)) %>%
@@ -418,9 +418,10 @@ model_3 <-
   )
 
 model_1
-  model_2
+model_2
 model_3
 df_v %>% count(type)
+#boxplot(df_v$ES, plot=FALSE)$out
 ```
 
 ```{r,  out.width="100%", out.height="100%", fig.asp=2.25, fig.retina=2}
