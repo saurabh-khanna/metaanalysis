@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.retina = 4)
 ```
 
 ```{r}
@@ -18,6 +18,7 @@ library(readxl)
 library(metafor)
 library(MAd)
 library(metaforest)
+#library(dmetar)
 
 # Parameters
 data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
@@ -105,8 +106,8 @@ df_post <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    #"MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    #"SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -168,8 +169,8 @@ df_prepost <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+   # "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+   # "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -202,7 +203,7 @@ for (mt in 1:4) {
       m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-      ri = rep(0.5, 86),
+      ri = rep(0.5, 85),
       var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
     ) 
 }
@@ -223,7 +224,7 @@ for (mc in 1:4) {
       m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-      ri = rep(0.5, 86),
+      ri = rep(0.5, 85),
       var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
     ) 
 }
@@ -424,7 +425,7 @@ df_v %>% count(type)
 #boxplot(df_v$ES, plot=FALSE)$out
 ```
 
-```{r,  out.width="100%", out.height="100%", fig.asp=2.25, fig.retina=2}
+```{r,  out.width="100%", out.height="100%", fig.asp=2.25, fig.retina = 4}
 forest(
   model_1,
   xlab = "Vocabulary",
@@ -487,20 +488,20 @@ model_3
 df_l %>% count(type)
 ```
 
-```{r,  out.width="100%", out.height="100%", fig.asp=1, fig.retina=2}
+```{r,  out.width="100%", out.height="100%", fig.asp=1, fig.retina = 4}
 forest(
   model_1,
   xlab = "Listening Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 31),
-  rows = c(3:8, 15:24),
+  ylim = c(-1, 26),
+  rows = c(3:8, 15:20),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-2.5, c(10, 26), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-2.5, c(10, 22), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 13, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
 ```
@@ -550,20 +551,20 @@ model_3
 df_r %>% count(type)
 ```
 
-```{r,  out.width="100%", out.height="100%", fig.asp=1.25, fig.retina=2}
+```{r,  out.width="100%", out.height="100%", fig.asp=1.25, fig.retina = 4}
 forest(
   model_1,
   xlab = "Reading Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 37),
-  rows = c(3:19, 27:31),
+  ylim = c(-1, 35),
+  rows = c(3:19, 27:29),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-3.6, c(21, 33), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-3.6, c(21, 31), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 24, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 ```
@@ -571,7 +572,7 @@ addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 
 ### Morphology
 
-```{r, fig.retina=2}
+```{r, fig.retina = 4}
 df_m %>%
   rma(
     yi = ES, 
@@ -602,7 +603,7 @@ df_m %>%
 
 ### Syntax
 
-```{r, fig.retina=2}
+```{r, fig.retina = 4}
 df_s %>%
   rma(
     yi = ES, 
@@ -634,7 +635,7 @@ df_s %>%
 ### Academic Learning
 
 
-```{r, fig.retina=2}
+```{r, fig.retina = 4}
 df_a %>%
   rma(
     yi = ES, 
@@ -679,8 +680,8 @@ df_delay <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    #"MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    #"SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -740,8 +741,8 @@ df_predelay <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    #"MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    #"SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -902,7 +903,7 @@ model_2
 model_3
 ```
 
-```{r,  out.width="100%", out.height="100%", fig.asp=1, fig.retina=2}
+```{r,  out.width="100%", out.height="100%", fig.asp=1, fig.retina = 4}
 forest(
   model_1,
   xlab = "Vocabulary - Delayed effects",
@@ -924,7 +925,7 @@ addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
 
 ### Forest plots - Reading Comprehension
 
-```{r,  out.width="100%", out.height="100%", fig.retina=2}
+```{r,  out.width="100%", out.height="100%", fig.retina = 4}
 df_clean_delay %>% 
   filter(type %in% c("RR", "RS")) %>% 
   arrange(desc(type), desc(ES)) %>%
@@ -1233,7 +1234,7 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grouping + type)
 
 ### Reading Comprehension - RR
 
-```{r, message=F, warning=F}
+```{r, message=F, warning=F, error=T}
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ Content)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ PD)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TMULT)
@@ -1285,13 +1286,177 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mod
 ```
 
 
+## Publication Bias
+
+### Funnel plots
+
+```{r}
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  funnel(xlab = "Vocabulary Effect Size")
+
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  funnel(xlab = "Listening Comprehension Effect Size")
+
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  funnel(xlab = "Reading Comprehension Effect Size")
+```
+
+### Egger's Test
+
+```{r}
+# Vocabulary
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>%
+  regtest(model = "rma", predictor = "sei")
+
+# Listening Comp.
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>%
+  regtest(model = "rma", predictor = "sei")
+
+# Reading Comp.
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  regtest(model = "rma", predictor = "sei")
+```
+
+
+### P Curves
+
+```{r}
+# Vocabulary
+df_v %>% 
+  mutate(
+    SE = sqrt(EV)
+  ) %>% 
+  meta::metagen(
+    ES,
+    SE,
+    data = .,
+    comb.fixed = F,
+    comb.random = T,
+    method.tau = "REML",
+    hakn = T,
+    sm = "SMD"
+  ) %>% 
+  pcurve()
+
+
+# Reading Comp
+df_r %>% 
+  mutate(
+    SE = sqrt(EV)
+  ) %>% 
+  meta::metagen(
+    ES,
+    SE,
+    data = .,
+    comb.fixed = F,
+    comb.random = T,
+    method.tau = "REML",
+    hakn = T,
+    sm = "SMD"
+  ) %>% 
+  pcurve()
+
+# # Listening Comp
+# df_l %>% 
+#   mutate(
+#     SE = sqrt(EV)
+#   ) %>% 
+#   meta::metagen(
+#     ES,
+#     SE,
+#     data = .,
+#     comb.fixed = F,
+#     comb.random = T,
+#     method.tau = "REML",
+#     hakn = T,
+#     sm = "SMD"
+#   ) %>% 
+#   pcurve()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## MetaForest plots
 
 ### Vocabulary
 
-```{r, fig.retina=2}
+```{r, fig.retina = 4, eval = F}
 df_v %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -1307,7 +1472,7 @@ df_v %>%
 
 ### Listening Comprehension
 
-```{r, fig.retina=2}
+```{r, fig.retina = 4, eval = F}
 df_l %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -1323,7 +1488,7 @@ df_l %>%
 
 ### Reading Comprehension
 
-```{r, fig.retina=2}
+```{r, fig.retina = 4, eval = F}
 df_r %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 

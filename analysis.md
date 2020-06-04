@@ -1,7 +1,7 @@
 Meta-analysis Script
 ================
 Saurabh Khanna
-2020-04-30
+2020-06-04
 
   - [Reading in data](#reading-in-data)
   - [Calculate effect sizes](#calculate-effect-sizes)
@@ -41,6 +41,10 @@ Saurabh Khanna
         type)](#reading-comprehension---overall-controlling-for-type)
       - [Reading Comprehension - RR](#reading-comprehension---rr)
       - [Reading Comprehension - RS](#reading-comprehension---rs)
+  - [Publication Bias](#publication-bias)
+      - [Funnel plots](#funnel-plots)
+      - [Egger’s Test](#eggers-test)
+      - [P Curves](#p-curves)
   - [MetaForest plots](#metaforest-plots)
       - [Vocabulary](#vocabulary-1)
       - [Listening Comprehension](#listening-comprehension-1)
@@ -49,59 +53,14 @@ Saurabh Khanna
 ``` r
 # Libraries
 library(tidyverse)
-```
-
-    ## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.0 ──
-
-    ## ✓ ggplot2 3.3.0     ✓ purrr   0.3.4
-    ## ✓ tibble  3.0.1     ✓ dplyr   0.8.5
-    ## ✓ tidyr   1.0.2     ✓ stringr 1.4.0
-    ## ✓ readr   1.3.1     ✓ forcats 0.5.0
-
-    ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-    ## x dplyr::filter() masks stats::filter()
-    ## x dplyr::lag()    masks stats::lag()
-
-``` r
 library(readxl)
 library(metafor)
-```
-
-    ## Loading required package: Matrix
-
-    ## 
-    ## Attaching package: 'Matrix'
-
-    ## The following objects are masked from 'package:tidyr':
-    ## 
-    ##     expand, pack, unpack
-
-    ## Loading 'metafor' package (version 2.4-0). For an overview 
-    ## and introduction to the package please type: help(metafor).
-
-``` r
 library(MAd)
 library(metaforest)
-```
+library(dmetar)
 
-    ## Loading required package: ranger
-
-    ## Loading required package: data.table
-
-    ## 
-    ## Attaching package: 'data.table'
-
-    ## The following objects are masked from 'package:dplyr':
-    ## 
-    ##     between, first, last
-
-    ## The following object is masked from 'package:purrr':
-    ## 
-    ##     transpose
-
-``` r
 # Parameters
-data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
+data_file <- "data/L&L Data Set Means SDs.xlsx"
 ```
 
 ## Reading in data
@@ -154,7 +113,7 @@ read_xlsx(data_file, sheet = "LR") %>%
 ```
 
     ## # A tibble: 0 x 1
-    ## # … with 1 variable: AUTYR <chr>
+    ## # ... with 1 variable: AUTYR <chr>
 
 ``` r
 read_xlsx(data_file, sheet = "LS") %>% 
@@ -169,7 +128,7 @@ read_xlsx(data_file, sheet = "LS") %>%
 ```
 
     ## # A tibble: 0 x 1
-    ## # … with 1 variable: AUTYR <chr>
+    ## # ... with 1 variable: AUTYR <chr>
 
 ``` r
 read_xlsx(data_file, sheet = "RR") %>% 
@@ -184,7 +143,7 @@ read_xlsx(data_file, sheet = "RR") %>%
 ```
 
     ## # A tibble: 0 x 1
-    ## # … with 1 variable: AUTYR <chr>
+    ## # ... with 1 variable: AUTYR <chr>
 
 ``` r
 read_xlsx(data_file, sheet = "RS") %>% 
@@ -199,7 +158,7 @@ read_xlsx(data_file, sheet = "RS") %>%
 ```
 
     ## # A tibble: 0 x 1
-    ## # … with 1 variable: AUTYR <chr>
+    ## # ... with 1 variable: AUTYR <chr>
 
 All good\!
 
@@ -217,8 +176,8 @@ df_post <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    #"MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    #"SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -278,8 +237,8 @@ df_prepost <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+   # "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+   # "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -312,7 +271,7 @@ for (mt in 1:4) {
       m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-      ri = rep(0.5, 86),
+      ri = rep(0.5, 85),
       var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
     ) 
 }
@@ -333,7 +292,7 @@ for (mc in 1:4) {
       m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-      ri = rep(0.5, 86),
+      ri = rep(0.5, 85),
       var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
     ) 
 }
@@ -471,52 +430,60 @@ df_clean %>% summary()
 ```
 
     ##       type       stdid                 ES                 EV         
-    ##  VR     :44   Length:115         Min.   :-0.47989   Min.   :0.00100  
-    ##  VS     :24   Class :character   1st Qu.: 0.07896   1st Qu.:0.01152  
-    ##  RS     :17   Mode  :character   Median : 0.29363   Median :0.02367  
-    ##  LR     :10                      Mean   : 0.64626   Mean   :0.05399  
-    ##  LS     : 6                      3rd Qu.: 0.84664   3rd Qu.:0.05768  
-    ##  RR     : 5                      Max.   : 7.00093   Max.   :0.51430  
-    ##  (Other): 9                                                          
-    ##     Content             PD            LowIncome            EL       
-    ##  Min.   :0.0000   Min.   :0.00000   Min.   :0.0000   Min.   :0.000  
-    ##  1st Qu.:0.0000   1st Qu.:0.00000   1st Qu.:0.0000   1st Qu.:0.000  
-    ##  Median :0.0000   Median :0.00000   Median :1.0000   Median :0.000  
-    ##  Mean   :0.2957   Mean   :0.05217   Mean   :0.6979   Mean   :0.313  
-    ##  3rd Qu.:1.0000   3rd Qu.:0.00000   3rd Qu.:1.0000   3rd Qu.:1.000  
-    ##  Max.   :1.0000   Max.   :1.00000   Max.   :1.0000   Max.   :1.000  
-    ##                                     NA's   :19                      
-    ##      TMULT             TVOC             TSYN          TMOR       
-    ##  Min.   :0.0000   Min.   :0.0000   Min.   :0.0   Min.   :0.0000  
-    ##  1st Qu.:0.0000   1st Qu.:1.0000   1st Qu.:0.0   1st Qu.:0.0000  
-    ##  Median :0.0000   Median :1.0000   Median :0.0   Median :0.0000  
-    ##  Mean   :0.3391   Mean   :0.9478   Mean   :0.2   Mean   :0.3478  
-    ##  3rd Qu.:1.0000   3rd Qu.:1.0000   3rd Qu.:0.0   3rd Qu.:1.0000  
-    ##  Max.   :1.0000   Max.   :1.0000   Max.   :1.0   Max.   :1.0000  
+    ##  VR     :44   Length:109         Min.   :-0.47989   Min.   :0.00100  
+    ##  VS     :24   Class :character   1st Qu.: 0.07679   1st Qu.:0.01194  
+    ##  RS     :17   Mode  :character   Median : 0.29363   Median :0.02428  
+    ##  LR     : 6                      Mean   : 0.64582   Mean   :0.05637  
+    ##  LS     : 6                      3rd Qu.: 0.84244   3rd Qu.:0.05921  
+    ##  MR     : 4                      Max.   : 7.00093   Max.   :0.51430  
+    ##  (Other): 8                                                          
+    ##     Content             PD            LowIncome            EL        
+    ##  Min.   :0.0000   Min.   :0.00000   Min.   :0.0000   Min.   :0.0000  
+    ##  1st Qu.:0.0000   1st Qu.:0.00000   1st Qu.:0.0000   1st Qu.:0.0000  
+    ##  Median :0.0000   Median :0.00000   Median :1.0000   Median :0.0000  
+    ##  Mean   :0.3119   Mean   :0.05505   Mean   :0.6923   Mean   :0.3211  
+    ##  3rd Qu.:1.0000   3rd Qu.:0.00000   3rd Qu.:1.0000   3rd Qu.:1.0000  
+    ##  Max.   :1.0000   Max.   :1.00000   Max.   :1.0000   Max.   :1.0000  
+    ##                                     NA's   :18                       
+    ##      TMULT             TVOC            TSYN            TMOR      
+    ##  Min.   :0.0000   Min.   :0.000   Min.   :0.000   Min.   :0.000  
+    ##  1st Qu.:0.0000   1st Qu.:1.000   1st Qu.:0.000   1st Qu.:0.000  
+    ##  Median :0.0000   Median :1.000   Median :0.000   Median :0.000  
+    ##  Mean   :0.3578   Mean   :0.945   Mean   :0.211   Mean   :0.367  
+    ##  3rd Qu.:1.0000   3rd Qu.:1.000   3rd Qu.:0.000   3rd Qu.:1.000  
+    ##  Max.   :1.0000   Max.   :1.000   Max.   :1.000   Max.   :1.000  
     ##                                                                  
-    ##       TCOG             TLC              TRC           TPAD             TDD     
-    ##  Min.   :0.0000   Min.   :0.0000   Min.   :0.0   Min.   :0.0000   Min.   :0.0  
-    ##  1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.0   1st Qu.:0.0000   1st Qu.:0.0  
-    ##  Median :0.0000   Median :0.0000   Median :0.0   Median :0.0000   Median :0.0  
-    ##  Mean   :0.1391   Mean   :0.3652   Mean   :0.2   Mean   :0.1043   Mean   :0.2  
-    ##  3rd Qu.:0.0000   3rd Qu.:1.0000   3rd Qu.:0.0   3rd Qu.:0.0000   3rd Qu.:0.0  
-    ##  Max.   :1.0000   Max.   :1.0000   Max.   :1.0   Max.   :1.0000   Max.   :1.0  
-    ##                                                                                
-    ##       TTEC             TSTR         CONT       Duration          Hours       
-    ##  Min.   :0.0000   Min.   :0.0000   BAU:87   Min.   :0.0000   Min.   :  1.00  
-    ##  1st Qu.:0.0000   1st Qu.:0.0000   ALT:28   1st Qu.:0.0000   1st Qu.: 13.75  
-    ##  Median :0.0000   Median :0.0000            Median :1.0000   Median : 22.00  
-    ##  Mean   :0.3043   Mean   :0.1304            Mean   :0.6696   Mean   : 30.36  
-    ##  3rd Qu.:1.0000   3rd Qu.:0.0000            3rd Qu.:1.0000   3rd Qu.: 35.75  
-    ##  Max.   :1.0000   Max.   :1.0000            Max.   :1.0000   Max.   :100.00  
-    ##                                                              NA's   :3       
-    ##  design    grade       grouping           TCOM          citation        
-    ##  RCT:79   3-5 :46   Min.   :0.0000   Min.   :0.0000   Length:115        
-    ##  QED:33   K-2 :67   1st Qu.:0.0000   1st Qu.:0.0000   Class :character  
-    ##  WSD: 3   Both: 2   Median :0.0000   Median :0.0000   Mode  :character  
-    ##                     Mean   :0.3652   Mean   :0.4261                     
-    ##                     3rd Qu.:1.0000   3rd Qu.:1.0000                     
-    ##                     Max.   :1.0000   Max.   :1.0000                     
+    ##       TCOG             TLC              TRC              TPAD       
+    ##  Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  
+    ##  1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.0000  
+    ##  Median :0.0000   Median :0.0000   Median :0.0000   Median :0.0000  
+    ##  Mean   :0.1468   Mean   :0.3853   Mean   :0.2018   Mean   :0.1101  
+    ##  3rd Qu.:0.0000   3rd Qu.:1.0000   3rd Qu.:0.0000   3rd Qu.:0.0000  
+    ##  Max.   :1.0000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000  
+    ##                                                                     
+    ##       TDD             TTEC             TSTR         CONT       Duration     
+    ##  Min.   :0.000   Min.   :0.0000   Min.   :0.0000   BAU:82   Min.   :0.0000  
+    ##  1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:0.0000   ALT:27   1st Qu.:0.0000  
+    ##  Median :0.000   Median :0.0000   Median :0.0000            Median :1.0000  
+    ##  Mean   :0.211   Mean   :0.3211   Mean   :0.1376            Mean   :0.6606  
+    ##  3rd Qu.:0.000   3rd Qu.:1.0000   3rd Qu.:0.0000            3rd Qu.:1.0000  
+    ##  Max.   :1.000   Max.   :1.0000   Max.   :1.0000            Max.   :1.0000  
+    ##                                                                             
+    ##      Hours        design    grade       grouping           TCOM       
+    ##  Min.   :  1.00   RCT:74   3-5 :44   Min.   :0.0000   Min.   :0.0000  
+    ##  1st Qu.: 13.00   QED:32   K-2 :63   1st Qu.:0.0000   1st Qu.:0.0000  
+    ##  Median : 22.00   WSD: 3   Both: 2   Median :0.0000   Median :0.0000  
+    ##  Mean   : 30.31                      Mean   :0.3486   Mean   :0.4404  
+    ##  3rd Qu.: 37.25                      3rd Qu.:1.0000   3rd Qu.:1.0000  
+    ##  Max.   :100.00                      Max.   :1.0000   Max.   :1.0000  
+    ##  NA's   :3                                                            
+    ##    citation        
+    ##  Length:109        
+    ##  Class :character  
+    ##  Mode  :character  
+    ##                    
+    ##                    
+    ##                    
     ## 
 
 ``` r
@@ -535,14 +502,14 @@ df_clean %>% count(stdid)
     ##  1 Apel1     2
     ##  2 Apel2     2
     ##  3 ApelK     1
-    ##  4 Apth1     2
-    ##  5 Apth3     2
-    ##  6 ApthK     2
+    ##  4 Apth1     1
+    ##  5 Apth3     1
+    ##  6 ApthK     1
     ##  7 ApthP     2
     ##  8 Arth1     1
     ##  9 Arth2     1
     ## 10 Arth3     1
-    ## # … with 48 more rows
+    ## # ... with 48 more rows
 
 ``` r
 #df_clean %>% arrange(type, ES) %>% writexl::write_xlsx("df_clean.xlsx")
@@ -550,20 +517,20 @@ df_clean %>% count(stdid)
 df_clean %>% count(type, stdid)
 ```
 
-    ## # A tibble: 115 x 3
-    ##    type  stdid       n
-    ##    <fct> <chr>   <int>
-    ##  1 AS    Jones1      1
-    ##  2 AS    Jones2      1
-    ##  3 AS    Proc19      1
-    ##  4 LR    Apth1       1
-    ##  5 LR    ApthK       1
-    ##  6 LR    Baker       1
-    ##  7 LR    Coyne10     1
-    ##  8 LR    Coyne19     1
-    ##  9 LR    Jiang1      1
-    ## 10 LR    Jiang2      1
-    ## # … with 105 more rows
+    ## # A tibble: 109 x 3
+    ##    type  stdid          n
+    ##    <fct> <chr>      <int>
+    ##  1 AS    Jones1         1
+    ##  2 AS    Jones2         1
+    ##  3 AS    Proc19         1
+    ##  4 LR    Baker          1
+    ##  5 LR    Jiang1         1
+    ##  6 LR    Jiang2         1
+    ##  7 LR    Jiang3         1
+    ##  8 LR    JiangK         1
+    ##  9 LR    Silver17bK     1
+    ## 10 LS    ApthP          1
+    ## # ... with 99 more rows
 
 ``` r
 df_v <- df_clean %>% filter(type %in% c("VR", "VS"))
@@ -618,18 +585,18 @@ model_1
     ## 
     ## Random-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 1.2678 (SE = 0.2284)
-    ## tau (square root of estimated tau^2 value):      1.1260
-    ## I^2 (total heterogeneity / total variability):   99.22%
-    ## H^2 (total variability / sampling variability):  127.97
+    ## tau^2 (estimated amount of total heterogeneity): 1.2617 (SE = 0.2273)
+    ## tau (square root of estimated tau^2 value):      1.1233
+    ## I^2 (total heterogeneity / total variability):   99.28%
+    ## H^2 (total variability / sampling variability):  138.33
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 67) = 2750.4215, p-val < .0001
+    ## Q(df = 67) = 2339.9370, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.8837  0.1396  6.3324  <.0001  0.6102  1.1572  *** 
+    ##   0.8504  0.1392  6.1083  <.0001  0.5775  1.1233  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -641,18 +608,18 @@ model_2
     ## 
     ## Random-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 1.4740 (SE = 0.3321)
-    ## tau (square root of estimated tau^2 value):      1.2141
-    ## I^2 (total heterogeneity / total variability):   99.21%
-    ## H^2 (total variability / sampling variability):  125.89
+    ## tau^2 (estimated amount of total heterogeneity): 1.5141 (SE = 0.3407)
+    ## tau (square root of estimated tau^2 value):      1.2305
+    ## I^2 (total heterogeneity / total variability):   99.33%
+    ## H^2 (total variability / sampling variability):  148.48
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 43) = 1675.9200, p-val < .0001
+    ## Q(df = 43) = 1578.6988, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   1.3240  0.1872  7.0711  <.0001  0.9570  1.6910  *** 
+    ##   1.2728  0.1896  6.7116  <.0001  0.9011  1.6445  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -755,20 +722,20 @@ model_1
 ```
 
     ## 
-    ## Random-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0180 (SE = 0.0116)
-    ## tau (square root of estimated tau^2 value):      0.1340
-    ## I^2 (total heterogeneity / total variability):   70.37%
-    ## H^2 (total variability / sampling variability):  3.38
+    ## tau^2 (estimated amount of total heterogeneity): 0.0040 (SE = 0.0076)
+    ## tau (square root of estimated tau^2 value):      0.0633
+    ## I^2 (total heterogeneity / total variability):   21.15%
+    ## H^2 (total variability / sampling variability):  1.27
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 15) = 64.9402, p-val < .0001
+    ## Q(df = 11) = 12.6457, p-val = 0.3171
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.2004  0.0464  4.3206  <.0001  0.1095  0.2914  *** 
+    ##   0.0968  0.0417  2.3245  0.0201  0.0152  0.1785  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -778,20 +745,20 @@ model_2
 ```
 
     ## 
-    ## Random-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0083 (SE = 0.0088)
-    ## tau (square root of estimated tau^2 value):      0.0911
-    ## I^2 (total heterogeneity / total variability):   51.18%
-    ## H^2 (total variability / sampling variability):  2.05
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 9) = 17.4119, p-val = 0.0426
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.2822  0.0455  6.2020  <.0001  0.1930  0.3713  *** 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -826,7 +793,7 @@ df_l %>% count(type)
     ## # A tibble: 2 x 2
     ##   type      n
     ##   <fct> <int>
-    ## 1 LR       10
+    ## 1 LR        6
     ## 2 LS        6
 
 ``` r
@@ -835,14 +802,14 @@ forest(
   xlab = "Listening Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 31),
-  rows = c(3:8, 15:24),
+  ylim = c(-1, 26),
+  rows = c(3:8, 15:20),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-2.5, c(10, 26), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-2.5, c(10, 22), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 13, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
 ```
@@ -889,20 +856,20 @@ model_1
 ```
 
     ## 
-    ## Random-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0770 (SE = 0.0301)
-    ## tau (square root of estimated tau^2 value):      0.2775
-    ## I^2 (total heterogeneity / total variability):   90.77%
-    ## H^2 (total variability / sampling variability):  10.84
+    ## tau^2 (estimated amount of total heterogeneity): 0.0925 (SE = 0.0378)
+    ## tau (square root of estimated tau^2 value):      0.3041
+    ## I^2 (total heterogeneity / total variability):   90.52%
+    ## H^2 (total variability / sampling variability):  10.55
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 21) = 104.1853, p-val < .0001
+    ## Q(df = 19) = 102.0868, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.1855  0.0674  2.7531  0.0059  0.0534  0.3175  ** 
+    ##   0.1887  0.0770  2.4498  0.0143  0.0377  0.3397  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -912,20 +879,20 @@ model_2
 ```
 
     ## 
-    ## Random-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.1666 (SE = 0.1282)
-    ## tau (square root of estimated tau^2 value):      0.4082
-    ## I^2 (total heterogeneity / total variability):   95.89%
-    ## H^2 (total variability / sampling variability):  24.35
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 4) = 45.9085, p-val < .0001
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.4636  0.1905  2.4339  0.0149  0.0903  0.8370  * 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -960,7 +927,7 @@ df_r %>% count(type)
     ## # A tibble: 2 x 2
     ##   type      n
     ##   <fct> <int>
-    ## 1 RR        5
+    ## 1 RR        3
     ## 2 RS       17
 
 ``` r
@@ -969,14 +936,14 @@ forest(
   xlab = "Reading Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 37),
-  rows = c(3:19, 27:31),
+  ylim = c(-1, 35),
+  rows = c(3:19, 27:29),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-3.6, c(21, 33), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-3.6, c(21, 31), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 24, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 ```
@@ -1161,8 +1128,8 @@ df_delay <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    #"MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    #"SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -1222,8 +1189,8 @@ df_predelay <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-    "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-    "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+    #"MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+    #"SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
     .id = "type"
@@ -1554,23 +1521,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9184 (SE = 0.1690)
-    ## tau (square root of estimated tau^2 value):             0.9584
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.87%
-    ## H^2 (unaccounted variability / sampling variability):   88.39
-    ## R^2 (amount of heterogeneity accounted for):            27.56%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9450 (SE = 0.1736)
+    ## tau (square root of estimated tau^2 value):             0.9721
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.99%
+    ## H^2 (unaccounted variability / sampling variability):   98.73
+    ## R^2 (amount of heterogeneity accounted for):            25.10%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 1707.7392, p-val < .0001
+    ## QE(df = 66) = 1610.5180, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 23.8039, p-val < .0001
+    ## QM(df = 1) = 21.2255, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0991  0.1994  0.4971  0.6191  -0.2917  0.4899      
-    ## typeVR     1.2161  0.2492  4.8789  <.0001   0.7275  1.7046  *** 
+    ## intrcpt    0.0992  0.2021  0.4908  0.6236  -0.2970  0.4954      
+    ## typeVR     1.1640  0.2527  4.6071  <.0001   0.6688  1.6592  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1582,23 +1549,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Content)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2841 (SE = 0.2330)
-    ## tau (square root of estimated tau^2 value):             1.1332
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.19%
-    ## H^2 (unaccounted variability / sampling variability):   124.20
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2743 (SE = 0.2313)
+    ## tau (square root of estimated tau^2 value):             1.1288
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.26%
+    ## H^2 (unaccounted variability / sampling variability):   134.32
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2716.0632, p-val < .0001
+    ## QE(df = 66) = 2331.1913, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.3788, p-val = 0.5382
+    ## QM(df = 1) = 0.5844, p-val = 0.4446
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.8302  0.1653  5.0219  <.0001   0.5062  1.1543  *** 
-    ## Content    0.1928  0.3132  0.6155  0.5382  -0.4211  0.8066      
+    ## intrcpt    0.7841  0.1647  4.7611  <.0001   0.4613  1.1069  *** 
+    ## Content    0.2385  0.3120  0.7645  0.4446  -0.3730  0.8501      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1610,23 +1577,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ PD)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2699 (SE = 0.2305)
-    ## tau (square root of estimated tau^2 value):             1.1269
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.12%
-    ## H^2 (unaccounted variability / sampling variability):   113.27
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2658 (SE = 0.2298)
+    ## tau (square root of estimated tau^2 value):             1.1251
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.19%
+    ## H^2 (unaccounted variability / sampling variability):   123.80
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2478.3372, p-val < .0001
+    ## QE(df = 66) = 2133.9554, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.9355, p-val = 0.3334
+    ## QM(df = 1) = 0.8414, p-val = 0.3590
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.9129  0.1429   6.3893  <.0001   0.6328  1.1929  *** 
-    ## PD        -0.6556  0.6778  -0.9672  0.3334  -1.9841  0.6729      
+    ## intrcpt    0.8780  0.1426   6.1555  <.0001   0.5985  1.1576  *** 
+    ## PD        -0.6208  0.6768  -0.9173  0.3590  -1.9472  0.7056      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1638,23 +1605,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMULT)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2365 (SE = 0.2247)
-    ## tau (square root of estimated tau^2 value):             1.1120
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.20%
-    ## H^2 (unaccounted variability / sampling variability):   124.29
-    ## R^2 (amount of heterogeneity accounted for):            2.47%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2175 (SE = 0.2213)
+    ## tau (square root of estimated tau^2 value):             1.1034
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.25%
+    ## H^2 (unaccounted variability / sampling variability):   133.16
+    ## R^2 (amount of heterogeneity accounted for):            3.51%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2674.6748, p-val < .0001
+    ## QE(df = 66) = 2234.8060, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.4847, p-val = 0.1150
+    ## QM(df = 1) = 3.1209, p-val = 0.0773
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.7133  0.1751  4.0743  <.0001   0.3701  1.0564  *** 
-    ## TMULT      0.4479  0.2841  1.5763  0.1150  -0.1090  1.0048      
+    ## intrcpt    0.6607  0.1737  3.8027  0.0001   0.3201  1.0012  *** 
+    ## TMULT      0.4982  0.2820  1.7666  0.0773  -0.0545  1.0510    . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1666,18 +1633,18 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TVOC)
     ## 
     ## Random-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 1.2678 (SE = 0.2284)
-    ## tau (square root of estimated tau^2 value):      1.1260
-    ## I^2 (total heterogeneity / total variability):   99.22%
-    ## H^2 (total variability / sampling variability):  127.97
+    ## tau^2 (estimated amount of total heterogeneity): 1.2617 (SE = 0.2273)
+    ## tau (square root of estimated tau^2 value):      1.1233
+    ## I^2 (total heterogeneity / total variability):   99.28%
+    ## H^2 (total variability / sampling variability):  138.33
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 67) = 2750.4215, p-val < .0001
+    ## Q(df = 67) = 2339.9370, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.8837  0.1396  6.3324  <.0001  0.6102  1.1572  *** 
+    ##   0.8504  0.1392  6.1083  <.0001  0.5775  1.1233  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1689,23 +1656,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSYN)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2430 (SE = 0.2258)
-    ## tau (square root of estimated tau^2 value):             1.1149
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.21%
-    ## H^2 (unaccounted variability / sampling variability):   126.26
-    ## R^2 (amount of heterogeneity accounted for):            1.96%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2302 (SE = 0.2235)
+    ## tau (square root of estimated tau^2 value):             1.1092
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.26%
+    ## H^2 (unaccounted variability / sampling variability):   135.93
+    ## R^2 (amount of heterogeneity accounted for):            2.50%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2610.1707, p-val < .0001
+    ## QE(df = 66) = 2188.6887, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.9356, p-val = 0.1641
+    ## QM(df = 1) = 2.2488, p-val = 0.1337
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.7919  0.1531  5.1726  <.0001   0.4918  1.0919  *** 
-    ## TSYN       0.4957  0.3563  1.3913  0.1641  -0.2026  1.1940      
+    ## intrcpt    0.7518  0.1523  4.9363  <.0001   0.4533  1.0503  *** 
+    ## TSYN       0.5318  0.3546  1.4996  0.1337  -0.1632  1.2267      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1717,23 +1684,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMOR)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2108 (SE = 0.2202)
-    ## tau (square root of estimated tau^2 value):             1.1004
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.18%
-    ## H^2 (unaccounted variability / sampling variability):   121.73
-    ## R^2 (amount of heterogeneity accounted for):            4.50%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.1913 (SE = 0.2168)
+    ## tau (square root of estimated tau^2 value):             1.0915
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.23%
+    ## H^2 (unaccounted variability / sampling variability):   130.32
+    ## R^2 (amount of heterogeneity accounted for):            5.58%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2674.1747, p-val < .0001
+    ## QE(df = 66) = 2234.9404, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 4.0088, p-val = 0.0453
+    ## QM(df = 1) = 4.7133, p-val = 0.0299
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval   ci.lb   ci.ub 
-    ## intrcpt    0.6981  0.1648  4.2366  <.0001  0.3751  1.0211  *** 
-    ## TMOR       0.5890  0.2942  2.0022  0.0453  0.0124  1.1656    * 
+    ## intrcpt    0.6505  0.1635  3.9791  <.0001  0.3301  0.9709  *** 
+    ## TMOR       0.6337  0.2919  2.1710  0.0299  0.0616  1.2058    * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1745,23 +1712,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TLC)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2718 (SE = 0.2308)
-    ## tau (square root of estimated tau^2 value):             1.1277
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.22%
-    ## H^2 (unaccounted variability / sampling variability):   128.64
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2596 (SE = 0.2286)
+    ## tau (square root of estimated tau^2 value):             1.1223
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.28%
+    ## H^2 (unaccounted variability / sampling variability):   138.58
+    ## R^2 (amount of heterogeneity accounted for):            0.17%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2689.5567, p-val < .0001
+    ## QE(df = 66) = 2263.1441, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.7297, p-val = 0.3930
+    ## QM(df = 1) = 1.0053, p-val = 0.3160
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.8057  0.1670  4.8243  <.0001   0.4784  1.1330  *** 
-    ## TLC        0.2606  0.3051  0.8542  0.3930  -0.3373  0.8586      
+    ## intrcpt    0.7592  0.1662  4.5678  <.0001   0.4334  1.0849  *** 
+    ## TLC        0.3045  0.3037  1.0026  0.3160  -0.2907  0.8997      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1773,23 +1740,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TRC)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2622 (SE = 0.2293)
-    ## tau (square root of estimated tau^2 value):             1.1235
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.20%
-    ## H^2 (unaccounted variability / sampling variability):   125.10
-    ## R^2 (amount of heterogeneity accounted for):            0.44%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2539 (SE = 0.2278)
+    ## tau (square root of estimated tau^2 value):             1.1198
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.26%
+    ## H^2 (unaccounted variability / sampling variability):   135.10
+    ## R^2 (amount of heterogeneity accounted for):            0.62%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2742.6138, p-val < .0001
+    ## QE(df = 66) = 2337.5229, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.3738, p-val = 0.2412
+    ## QM(df = 1) = 1.4890, p-val = 0.2224
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.9484  0.1498   6.3302  <.0001   0.6548  1.2421  *** 
-    ## TRC       -0.4761  0.4062  -1.1721  0.2412  -1.2721  0.3200      
+    ## intrcpt    0.9175  0.1493   6.1439  <.0001   0.6248  1.2102  *** 
+    ## TRC       -0.4940  0.4049  -1.2203  0.2224  -1.2876  0.2995      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1801,23 +1768,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TCOM)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2818 (SE = 0.2326)
-    ## tau (square root of estimated tau^2 value):             1.1322
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.21%
-    ## H^2 (unaccounted variability / sampling variability):   127.31
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2735 (SE = 0.2311)
+    ## tau (square root of estimated tau^2 value):             1.1285
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.27%
+    ## H^2 (unaccounted variability / sampling variability):   137.53
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2672.3418, p-val < .0001
+    ## QE(df = 66) = 2274.7248, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.2891, p-val = 0.5908
+    ## QM(df = 1) = 0.3833, p-val = 0.5358
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.8273  0.1754  4.7151  <.0001   0.4834  1.1711  *** 
-    ## TCOM       0.1571  0.2922  0.5377  0.5908  -0.4155  0.7297      
+    ## intrcpt    0.7856  0.1749  4.4922  <.0001   0.4428  1.1283  *** 
+    ## TCOM       0.1803  0.2913  0.6191  0.5358  -0.3905  0.7512      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1829,23 +1796,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TPAD)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2462 (SE = 0.2264)
-    ## tau (square root of estimated tau^2 value):             1.1163
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.21%
-    ## H^2 (unaccounted variability / sampling variability):   126.78
-    ## R^2 (amount of heterogeneity accounted for):            1.71%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2456 (SE = 0.2262)
+    ## tau (square root of estimated tau^2 value):             1.1161
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.27%
+    ## H^2 (unaccounted variability / sampling variability):   137.71
+    ## R^2 (amount of heterogeneity accounted for):            1.28%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2740.0136, p-val < .0001
+    ## QE(df = 66) = 2334.4529, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.1813, p-val = 0.1397
+    ## QM(df = 1) = 1.9135, p-val = 0.1666
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.9633  0.1486   6.4826  <.0001   0.6720  1.2545  *** 
-    ## TPAD      -0.6030  0.4083  -1.4769  0.1397  -1.4033  0.1972      
+    ## intrcpt    0.9249  0.1485   6.2266  <.0001   0.6338  1.2161  *** 
+    ## TPAD      -0.5647  0.4082  -1.3833  0.1666  -1.3647  0.2354      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1857,23 +1824,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ LowIncome)
     ## 
     ## Mixed-Effects Model (k = 54; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4137 (SE = 0.2862)
-    ## tau (square root of estimated tau^2 value):             1.1890
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.36%
-    ## H^2 (unaccounted variability / sampling variability):   156.97
-    ## R^2 (amount of heterogeneity accounted for):            5.85%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.4100 (SE = 0.2854)
+    ## tau (square root of estimated tau^2 value):             1.1874
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.41%
+    ## H^2 (unaccounted variability / sampling variability):   168.26
+    ## R^2 (amount of heterogeneity accounted for):            6.04%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 52) = 2337.1700, p-val < .0001
+    ## QE(df = 52) = 2038.7842, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 4.0804, p-val = 0.0434
+    ## QM(df = 1) = 4.1870, p-val = 0.0407
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb    ci.ub 
-    ## intrcpt      1.5303  0.3249   4.7099  <.0001   0.8935   2.1671  *** 
-    ## LowIncome   -0.7610  0.3768  -2.0200  0.0434  -1.4994  -0.0226    * 
+    ## intrcpt      1.5017  0.3245   4.6277  <.0001   0.8657   2.1377  *** 
+    ## LowIncome   -0.7699  0.3763  -2.0462  0.0407  -1.5073  -0.0325    * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1885,23 +1852,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ EL)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2345 (SE = 0.2244)
-    ## tau (square root of estimated tau^2 value):             1.1111
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.15%
-    ## H^2 (unaccounted variability / sampling variability):   117.92
-    ## R^2 (amount of heterogeneity accounted for):            2.63%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2342 (SE = 0.2243)
+    ## tau (square root of estimated tau^2 value):             1.1110
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.22%
+    ## H^2 (unaccounted variability / sampling variability):   128.36
+    ## R^2 (amount of heterogeneity accounted for):            2.18%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2694.1562, p-val < .0001
+    ## QE(df = 66) = 2300.8444, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.8850, p-val = 0.0894
+    ## QM(df = 1) = 2.5989, p-val = 0.1069
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.0639  0.1740   6.1126  <.0001   0.7227  1.4050  *** 
-    ## EL        -0.4838  0.2849  -1.6985  0.0894  -1.0422  0.0745    . 
+    ## intrcpt    1.0213  0.1740   5.8699  <.0001   0.6803  1.3624  *** 
+    ## EL        -0.4592  0.2848  -1.6121  0.1069  -1.0174  0.0991      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1913,23 +1880,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TDD)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2575 (SE = 0.2284)
-    ## tau (square root of estimated tau^2 value):             1.1214
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.18%
-    ## H^2 (unaccounted variability / sampling variability):   121.48
-    ## R^2 (amount of heterogeneity accounted for):            0.81%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2571 (SE = 0.2283)
+    ## tau (square root of estimated tau^2 value):             1.1212
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.24%
+    ## H^2 (unaccounted variability / sampling variability):   132.35
+    ## R^2 (amount of heterogeneity accounted for):            0.36%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2698.9130, p-val < .0001
+    ## QE(df = 66) = 2321.3572, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.5956, p-val = 0.2065
+    ## QM(df = 1) = 1.3252, p-val = 0.2497
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.9659  0.1535   6.2912  <.0001   0.6650  1.2668  *** 
-    ## TDD       -0.4568  0.3616  -1.2632  0.2065  -1.1656  0.2520      
+    ## intrcpt    0.9253  0.1535   6.0285  <.0001   0.6245  1.2262  *** 
+    ## TDD       -0.4162  0.3616  -1.1512  0.2497  -1.1249  0.2924      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1941,23 +1908,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TTEC)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2888 (SE = 0.2339)
-    ## tau (square root of estimated tau^2 value):             1.1353
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.23%
-    ## H^2 (unaccounted variability / sampling variability):   129.19
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2811 (SE = 0.2325)
+    ## tau (square root of estimated tau^2 value):             1.1318
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.28%
+    ## H^2 (unaccounted variability / sampling variability):   139.74
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2732.6038, p-val < .0001
+    ## QE(df = 66) = 2303.9109, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0135, p-val = 0.9074
+    ## QM(df = 1) = 0.0736, p-val = 0.7862
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.8725  0.1718  5.0784  <.0001   0.5358  1.2093  *** 
-    ## TTEC       0.0348  0.2992  0.1163  0.9074  -0.5516  0.6212      
+    ## intrcpt    0.8240  0.1713  4.8104  <.0001   0.4883  1.1597  *** 
+    ## TTEC       0.0809  0.2983  0.2713  0.7862  -0.5038  0.6656      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1969,23 +1936,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSTR)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2675 (SE = 0.2302)
-    ## tau (square root of estimated tau^2 value):             1.1258
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.15%
-    ## H^2 (unaccounted variability / sampling variability):   118.20
-    ## R^2 (amount of heterogeneity accounted for):            0.02%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2566 (SE = 0.2282)
+    ## tau (square root of estimated tau^2 value):             1.1210
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.22%
+    ## H^2 (unaccounted variability / sampling variability):   127.96
+    ## R^2 (amount of heterogeneity accounted for):            0.40%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2598.7286, p-val < .0001
+    ## QE(df = 66) = 2247.8002, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.2197, p-val = 0.2694
+    ## QM(df = 1) = 1.4612, p-val = 0.2267
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.8189  0.1514  5.4104  <.0001   0.5223  1.1156  *** 
-    ## TSTR       0.4314  0.3906  1.1044  0.2694  -0.3342  1.1970      
+    ## intrcpt    0.7797  0.1507  5.1731  <.0001   0.4843  1.0751  *** 
+    ## TSTR       0.4702  0.3890  1.2088  0.2267  -0.2922  1.2326      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -1997,23 +1964,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ CONT)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2888 (SE = 0.2338)
-    ## tau (square root of estimated tau^2 value):             1.1353
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.22%
-    ## H^2 (unaccounted variability / sampling variability):   127.90
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2830 (SE = 0.2328)
+    ## tau (square root of estimated tau^2 value):             1.1327
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.27%
+    ## H^2 (unaccounted variability / sampling variability):   137.29
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2597.5081, p-val < .0001
+    ## QE(df = 66) = 2201.2157, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0184, p-val = 0.8922
+    ## QM(df = 1) = 0.0023, p-val = 0.9614
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.8972  0.1711   5.2448  <.0001   0.5619  1.2325  *** 
-    ## CONTALT   -0.0407  0.3006  -0.1355  0.8922  -0.6299  0.5484      
+    ## intrcpt    0.8554  0.1707   5.0120  <.0001   0.5209  1.1899  *** 
+    ## CONTALT   -0.0145  0.2999  -0.0484  0.9614  -0.6023  0.5733      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2025,23 +1992,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Duration)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2888 (SE = 0.2338)
-    ## tau (square root of estimated tau^2 value):             1.1353
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.23%
-    ## H^2 (unaccounted variability / sampling variability):   129.58
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2827 (SE = 0.2327)
+    ## tau (square root of estimated tau^2 value):             1.1326
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.29%
+    ## H^2 (unaccounted variability / sampling variability):   140.27
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2718.3912, p-val < .0001
+    ## QE(df = 66) = 2288.6694, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0028, p-val = 0.9574
+    ## QM(df = 1) = 0.0000, p-val = 0.9962
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.8742  0.2311  3.7828  0.0002   0.4213  1.3272  *** 
-    ## Duration    0.0155  0.2913  0.0534  0.9574  -0.5553  0.5864      
+    ##           estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt     0.8516  0.2305   3.6937  0.0002   0.3997  1.3034  *** 
+    ## Duration   -0.0014  0.2906  -0.0047  0.9962  -0.5709  0.5681      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2053,23 +2020,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Hours)
     ## 
     ## Mixed-Effects Model (k = 66; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.3123 (SE = 0.2418)
-    ## tau (square root of estimated tau^2 value):             1.1456
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.10%
-    ## H^2 (unaccounted variability / sampling variability):   111.09
+    ## tau^2 (estimated amount of residual heterogeneity):     1.3081 (SE = 0.2410)
+    ## tau (square root of estimated tau^2 value):             1.1437
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.18%
+    ## H^2 (unaccounted variability / sampling variability):   122.15
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 64) = 2415.9378, p-val < .0001
+    ## QE(df = 64) = 2093.3441, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0797, p-val = 0.7776
+    ## QM(df = 1) = 0.0650, p-val = 0.7988
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.8565  0.2308  3.7109  0.0002   0.4041  1.3089  *** 
-    ## Hours      0.0019  0.0066  0.2824  0.7776  -0.0111  0.0148      
+    ## intrcpt    0.8272  0.2304  3.5897  0.0003   0.3756  1.2789  *** 
+    ## Hours      0.0017  0.0066  0.2550  0.7988  -0.0112  0.0146      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2081,24 +2048,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ design)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.1785 (SE = 0.2162)
-    ## tau (square root of estimated tau^2 value):             1.0856
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.16%
-    ## H^2 (unaccounted variability / sampling variability):   119.27
-    ## R^2 (amount of heterogeneity accounted for):            7.04%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.1673 (SE = 0.2142)
+    ## tau (square root of estimated tau^2 value):             1.0804
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.22%
+    ## H^2 (unaccounted variability / sampling variability):   128.61
+    ## R^2 (amount of heterogeneity accounted for):            7.48%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 2337.3630, p-val < .0001
+    ## QE(df = 65) = 1893.1333, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 6.3740, p-val = 0.0413
+    ## QM(df = 2) = 6.6456, p-val = 0.0361
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.8941  0.1685   5.3053  <.0001   0.5638  1.2245  *** 
-    ## designQED   -0.2471  0.2932  -0.8427  0.3994  -0.8218  0.3276      
-    ## designWSD    1.4598  0.6549   2.2291  0.0258   0.1762  2.7435    * 
+    ## intrcpt      0.8561  0.1678   5.1032  <.0001   0.5273  1.1848  *** 
+    ## designQED   -0.2380  0.2918  -0.8157  0.4147  -0.8100  0.3339      
+    ## designWSD    1.4979  0.6518   2.2979  0.0216   0.2203  2.7755    * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2110,24 +2077,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grade)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2947 (SE = 0.2368)
-    ## tau (square root of estimated tau^2 value):             1.1379
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.21%
-    ## H^2 (unaccounted variability / sampling variability):   126.15
+    ## tau^2 (estimated amount of residual heterogeneity):     1.2877 (SE = 0.2355)
+    ## tau (square root of estimated tau^2 value):             1.1348
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.27%
+    ## H^2 (unaccounted variability / sampling variability):   136.36
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 2673.8398, p-val < .0001
+    ## QE(df = 65) = 2258.9643, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 0.7561, p-val = 0.6852
+    ## QM(df = 2) = 0.7894, p-val = 0.6739
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.9390  0.2515   3.7336  0.0002   0.4461  1.4319  *** 
-    ## gradeK-2    -0.1012  0.3048  -0.3320  0.7399  -0.6985  0.4961      
-    ## gradeBoth    0.8614  1.1760   0.7325  0.4639  -1.4436  3.1663      
+    ## intrcpt      0.8990  0.2508   3.5841  0.0003   0.4074  1.3907  *** 
+    ## gradeK-2    -0.0922  0.3040  -0.3033  0.7617  -0.6879  0.5036      
+    ## gradeBoth    0.9013  1.1729   0.7685  0.4422  -1.3975  3.2002      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2139,23 +2106,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grouping)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.1221 (SE = 0.2047)
-    ## tau (square root of estimated tau^2 value):             1.0593
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.08%
-    ## H^2 (unaccounted variability / sampling variability):   108.55
-    ## R^2 (amount of heterogeneity accounted for):            11.49%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.1269 (SE = 0.2055)
+    ## tau (square root of estimated tau^2 value):             1.0616
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.16%
+    ## H^2 (unaccounted variability / sampling variability):   118.51
+    ## R^2 (amount of heterogeneity accounted for):            10.69%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 2741.4692, p-val < .0001
+    ## QE(df = 66) = 2339.7215, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 8.6006, p-val = 0.0034
+    ## QM(df = 1) = 8.0283, p-val = 0.0046
     ## 
     ## Model Results:
     ## 
     ##           estimate      se    zval    pval   ci.lb   ci.ub 
-    ## intrcpt     0.5698  0.1692  3.3679  0.0008  0.2382  0.9013  *** 
-    ## grouping    0.7897  0.2693  2.9327  0.0034  0.2619  1.3176   ** 
+    ## intrcpt     0.5465  0.1695  3.2242  0.0013  0.2143  0.8787  ** 
+    ## grouping    0.7645  0.2698  2.8334  0.0046  0.2357  1.2933  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2169,24 +2136,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Content + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9288 (SE = 0.1722)
-    ## tau (square root of estimated tau^2 value):             0.9638
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.84%
-    ## H^2 (unaccounted variability / sampling variability):   86.15
-    ## R^2 (amount of heterogeneity accounted for):            26.74%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9515 (SE = 0.1761)
+    ## tau (square root of estimated tau^2 value):             0.9754
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.96%
+    ## H^2 (unaccounted variability / sampling variability):   95.73
+    ## R^2 (amount of heterogeneity accounted for):            24.59%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1530.9869, p-val < .0001
+    ## QE(df = 65) = 1551.2785, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 24.1778, p-val < .0001
+    ## QM(df = 2) = 21.9934, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0372  0.2154  0.1726  0.8629  -0.3849  0.4593      
-    ## Content    0.2115  0.2684  0.7879  0.4308  -0.3146  0.7376      
-    ## typeVR     1.2211  0.2507  4.8713  <.0001   0.7298  1.7124  *** 
+    ## intrcpt    0.0237  0.2179  0.1088  0.9133  -0.4033  0.4507      
+    ## Content    0.2578  0.2715  0.9494  0.3424  -0.2744  0.7899      
+    ## typeVR     1.1700  0.2536  4.6144  <.0001   0.6731  1.6670  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2198,24 +2165,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ PD + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9336 (SE = 0.1730)
-    ## tau (square root of estimated tau^2 value):             0.9663
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.76%
-    ## H^2 (unaccounted variability / sampling variability):   80.42
-    ## R^2 (amount of heterogeneity accounted for):            26.36%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9606 (SE = 0.1777)
+    ## tau (square root of estimated tau^2 value):             0.9801
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.90%
+    ## H^2 (unaccounted variability / sampling variability):   90.77
+    ## R^2 (amount of heterogeneity accounted for):            23.87%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1704.4791, p-val < .0001
+    ## QE(df = 65) = 1607.2580, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 23.5297, p-val < .0001
+    ## QM(df = 2) = 20.9905, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0772  0.2147  0.3596  0.7192  -0.3436  0.4979      
-    ## PD         0.1778  0.6106  0.2912  0.7709  -1.0190  1.3747      
-    ## typeVR     1.2383  0.2623  4.7210  <.0001   0.7242  1.7524  *** 
+    ## intrcpt    0.0773  0.2176  0.3550  0.7226  -0.3493  0.5039      
+    ## PD         0.1780  0.6190  0.2876  0.7737  -1.0352  1.3912      
+    ## typeVR     1.1863  0.2659  4.4618  <.0001   0.6652  1.7075  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2227,24 +2194,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMULT + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.8960 (SE = 0.1664)
-    ## tau (square root of estimated tau^2 value):             0.9466
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.83%
-    ## H^2 (unaccounted variability / sampling variability):   85.76
-    ## R^2 (amount of heterogeneity accounted for):            29.33%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9108 (SE = 0.1689)
+    ## tau (square root of estimated tau^2 value):             0.9543
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.95%
+    ## H^2 (unaccounted variability / sampling variability):   94.80
+    ## R^2 (amount of heterogeneity accounted for):            27.82%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1617.4542, p-val < .0001
+    ## QE(df = 65) = 1471.6344, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 26.6419, p-val < .0001
+    ## QM(df = 2) = 24.9239, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt   -0.0247  0.2133  -0.1159  0.9077  -0.4429  0.3934      
-    ## TMULT      0.3694  0.2443   1.5120  0.1305  -0.1095  0.8484      
-    ## typeVR     1.1904  0.2469   4.8219  <.0001   0.7066  1.6743  *** 
+    ## intrcpt   -0.0429  0.2150  -0.1996  0.8418  -0.4644  0.3785      
+    ## TMULT      0.4240  0.2462   1.7218  0.0851  -0.0586  0.9065    . 
+    ## typeVR     1.1344  0.2488   4.5595  <.0001   0.6468  1.6220  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2256,23 +2223,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TVOC + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9184 (SE = 0.1690)
-    ## tau (square root of estimated tau^2 value):             0.9584
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.87%
-    ## H^2 (unaccounted variability / sampling variability):   88.39
-    ## R^2 (amount of heterogeneity accounted for):            27.56%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9450 (SE = 0.1736)
+    ## tau (square root of estimated tau^2 value):             0.9721
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.99%
+    ## H^2 (unaccounted variability / sampling variability):   98.73
+    ## R^2 (amount of heterogeneity accounted for):            25.10%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 66) = 1707.7392, p-val < .0001
+    ## QE(df = 66) = 1610.5180, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 23.8039, p-val < .0001
+    ## QM(df = 1) = 21.2255, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0991  0.1994  0.4971  0.6191  -0.2917  0.4899      
-    ## typeVR     1.2161  0.2492  4.8789  <.0001   0.7275  1.7046  *** 
+    ## intrcpt    0.0992  0.2021  0.4908  0.6236  -0.2970  0.4954      
+    ## typeVR     1.1640  0.2527  4.6071  <.0001   0.6688  1.6592  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2284,24 +2251,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSYN + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9093 (SE = 0.1686)
-    ## tau (square root of estimated tau^2 value):             0.9536
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.86%
-    ## H^2 (unaccounted variability / sampling variability):   88.04
-    ## R^2 (amount of heterogeneity accounted for):            28.28%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9304 (SE = 0.1723)
+    ## tau (square root of estimated tau^2 value):             0.9646
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.98%
+    ## H^2 (unaccounted variability / sampling variability):   97.94
+    ## R^2 (amount of heterogeneity accounted for):            26.26%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1600.6208, p-val < .0001
+    ## QE(df = 65) = 1474.8382, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 25.2055, p-val < .0001
+    ## QM(df = 2) = 23.0012, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0577  0.2021  0.2855  0.7753  -0.3383  0.4537      
-    ## TSYN       0.3372  0.3104  1.0865  0.2772  -0.2711  0.9455      
-    ## typeVR     1.1844  0.2497  4.7422  <.0001   0.6949  1.6739  *** 
+    ## intrcpt    0.0525  0.2043  0.2568  0.7973  -0.3480  0.4529      
+    ## TSYN       0.3803  0.3137  1.2123  0.2254  -0.2345  0.9951      
+    ## typeVR     1.1281  0.2525  4.4681  <.0001   0.6333  1.6230  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2313,24 +2280,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TMOR + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.8664 (SE = 0.1612)
-    ## tau (square root of estimated tau^2 value):             0.9308
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.79%
-    ## H^2 (unaccounted variability / sampling variability):   82.97
-    ## R^2 (amount of heterogeneity accounted for):            31.66%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.8797 (SE = 0.1635)
+    ## tau (square root of estimated tau^2 value):             0.9379
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.91%
+    ## H^2 (unaccounted variability / sampling variability):   91.60
+    ## R^2 (amount of heterogeneity accounted for):            30.28%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1615.0745, p-val < .0001
+    ## QE(df = 65) = 1470.1825, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 29.8613, p-val < .0001
+    ## QM(df = 2) = 28.1941, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt   -0.0628  0.2076  -0.3025  0.7623  -0.4697  0.3441      
-    ## TMOR       0.5457  0.2506   2.1772  0.0295   0.0545  1.0370    * 
-    ## typeVR     1.1989  0.2425   4.9436  <.0001   0.7236  1.6743  *** 
+    ## intrcpt   -0.0768  0.2091  -0.3674  0.7133  -0.4867  0.3330      
+    ## TMOR       0.5934  0.2525   2.3504  0.0188   0.0986  1.0882    * 
+    ## typeVR     1.1452  0.2443   4.6882  <.0001   0.6664  1.6239  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2342,24 +2309,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TLC + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9054 (SE = 0.1680)
-    ## tau (square root of estimated tau^2 value):             0.9515
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.85%
-    ## H^2 (unaccounted variability / sampling variability):   87.20
-    ## R^2 (amount of heterogeneity accounted for):            28.59%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9252 (SE = 0.1714)
+    ## tau (square root of estimated tau^2 value):             0.9619
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.97%
+    ## H^2 (unaccounted variability / sampling variability):   96.87
+    ## R^2 (amount of heterogeneity accounted for):            26.68%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1605.4150, p-val < .0001
+    ## QE(df = 65) = 1480.8369, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 25.6973, p-val < .0001
+    ## QM(df = 2) = 23.6015, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt   -0.0073  0.2154  -0.0338  0.9730  -0.4294  0.4149      
-    ## TLC        0.3269  0.2605   1.2550  0.2095  -0.1836  0.8374      
-    ## typeVR     1.2305  0.2478   4.9653  <.0001   0.7448  1.7162  *** 
+    ## intrcpt   -0.0206  0.2176  -0.0948  0.9245  -0.4472  0.4059      
+    ## TLC        0.3680  0.2631   1.3989  0.1619  -0.1476  0.8837      
+    ## typeVR     1.1801  0.2504   4.7133  <.0001   0.6894  1.6709  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2371,24 +2338,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TRC + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9352 (SE = 0.1734)
-    ## tau (square root of estimated tau^2 value):             0.9670
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.86%
-    ## H^2 (unaccounted variability / sampling variability):   87.96
-    ## R^2 (amount of heterogeneity accounted for):            26.24%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9616 (SE = 0.1780)
+    ## tau (square root of estimated tau^2 value):             0.9806
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.98%
+    ## H^2 (unaccounted variability / sampling variability):   98.29
+    ## R^2 (amount of heterogeneity accounted for):            23.79%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1659.2158, p-val < .0001
+    ## QE(df = 65) = 1580.5157, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 23.4247, p-val < .0001
+    ## QM(df = 2) = 20.9406, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1105  0.2210   0.5000  0.6171  -0.3227  0.5437      
-    ## TRC       -0.0448  0.3625  -0.1236  0.9016  -0.7552  0.6656      
-    ## typeVR     1.2083  0.2598   4.6510  <.0001   0.6991  1.7175  *** 
+    ## intrcpt    0.1204  0.2240   0.5376  0.5908  -0.3186  0.5595      
+    ## TRC       -0.0837  0.3675  -0.2278  0.8198  -0.8039  0.6365      
+    ## typeVR     1.1492  0.2633   4.3651  <.0001   0.6332  1.6652  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2400,24 +2367,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TCOM + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9135 (SE = 0.1694)
-    ## tau (square root of estimated tau^2 value):             0.9558
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.84%
-    ## H^2 (unaccounted variability / sampling variability):   86.21
-    ## R^2 (amount of heterogeneity accounted for):            27.95%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9378 (SE = 0.1737)
+    ## tau (square root of estimated tau^2 value):             0.9684
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.96%
+    ## H^2 (unaccounted variability / sampling variability):   96.19
+    ## R^2 (amount of heterogeneity accounted for):            25.67%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1565.6584, p-val < .0001
+    ## QE(df = 65) = 1483.4381, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 25.0396, p-val < .0001
+    ## QM(df = 2) = 22.6218, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt   -0.0093  0.2238  -0.0416  0.9668  -0.4479  0.4293      
-    ## TCOM       0.2638  0.2497   1.0563  0.2908  -0.2257  0.7532      
-    ## typeVR     1.2377  0.2494   4.9616  <.0001   0.7488  1.7266  *** 
+    ## intrcpt   -0.0168  0.2266  -0.0743  0.9408  -0.4610  0.4274      
+    ## TCOM       0.2823  0.2528   1.1164  0.2642  -0.2133  0.7778      
+    ## typeVR     1.1871  0.2526   4.6996  <.0001   0.6920  1.6822  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2429,24 +2396,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TPAD + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9078 (SE = 0.1684)
-    ## tau (square root of estimated tau^2 value):             0.9528
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.86%
-    ## H^2 (unaccounted variability / sampling variability):   87.98
-    ## R^2 (amount of heterogeneity accounted for):            28.40%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9387 (SE = 0.1739)
+    ## tau (square root of estimated tau^2 value):             0.9689
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.99%
+    ## H^2 (unaccounted variability / sampling variability):   98.82
+    ## R^2 (amount of heterogeneity accounted for):            25.60%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1706.4217, p-val < .0001
+    ## QE(df = 65) = 1610.4114, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 25.8784, p-val < .0001
+    ## QM(df = 2) = 22.8803, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1774  0.2066   0.8586  0.3906  -0.2276  0.5823      
-    ## TPAD      -0.4745  0.3521  -1.3477  0.1778  -1.1646  0.2156      
-    ## typeVR     1.1916  0.2485   4.7947  <.0001   0.7045  1.6786  *** 
+    ## intrcpt    0.1721  0.2100   0.8196  0.4125  -0.2395  0.5836      
+    ## TPAD      -0.4415  0.3577  -1.2343  0.2171  -1.1427  0.2596      
+    ## typeVR     1.1412  0.2525   4.5195  <.0001   0.6463  1.6361  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2458,24 +2425,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ LowIncome + type)
     ## 
     ## Mixed-Effects Model (k = 54; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.0219 (SE = 0.2111)
-    ## tau (square root of estimated tau^2 value):             1.0109
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.06%
-    ## H^2 (unaccounted variability / sampling variability):   106.77
-    ## R^2 (amount of heterogeneity accounted for):            31.94%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.0551 (SE = 0.2176)
+    ## tau (square root of estimated tau^2 value):             1.0272
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.16%
+    ## H^2 (unaccounted variability / sampling variability):   118.43
+    ## R^2 (amount of heterogeneity accounted for):            29.69%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 51) = 1401.2700, p-val < .0001
+    ## QE(df = 51) = 1361.5232, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 24.6362, p-val < .0001
+    ## QM(df = 2) = 22.4661, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb    ci.ub 
-    ## intrcpt      0.6177  0.3466   1.7822  0.0747  -0.0616   1.2970    . 
-    ## LowIncome   -0.6584  0.3233  -2.0368  0.0417  -1.2920  -0.0248    * 
-    ## typeVR       1.2868  0.2944   4.3707  <.0001   0.7098   1.8639  *** 
+    ## intrcpt      0.6281  0.3520   1.7845  0.0743  -0.0617   1.3180    . 
+    ## LowIncome   -0.6715  0.3282  -2.0457  0.0408  -1.3148  -0.0281    * 
+    ## typeVR       1.2317  0.2990   4.1195  <.0001   0.6457   1.8177  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2487,24 +2454,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ EL + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9222 (SE = 0.1710)
-    ## tau (square root of estimated tau^2 value):             0.9603
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.82%
-    ## H^2 (unaccounted variability / sampling variability):   84.98
-    ## R^2 (amount of heterogeneity accounted for):            27.26%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9509 (SE = 0.1760)
+    ## tau (square root of estimated tau^2 value):             0.9751
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.95%
+    ## H^2 (unaccounted variability / sampling variability):   95.48
+    ## R^2 (amount of heterogeneity accounted for):            24.64%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1672.9308, p-val < .0001
+    ## QE(df = 65) = 1578.1614, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 24.6610, p-val < .0001
+    ## QM(df = 2) = 21.9171, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2229  0.2369   0.9412  0.3466  -0.2413  0.6872      
-    ## EL        -0.2459  0.2527  -0.9729  0.3306  -0.7413  0.2495      
-    ## typeVR     1.1666  0.2549   4.5774  <.0001   0.6671  1.6662  *** 
+    ## intrcpt    0.2156  0.2404   0.8971  0.3697  -0.2555  0.6868      
+    ## EL        -0.2312  0.2565  -0.9015  0.3673  -0.7339  0.2715      
+    ## typeVR     1.1175  0.2586   4.3211  <.0001   0.6106  1.6244  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2516,24 +2483,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TDD + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.8942 (SE = 0.1661)
-    ## tau (square root of estimated tau^2 value):             0.9456
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.80%
-    ## H^2 (unaccounted variability / sampling variability):   83.05
-    ## R^2 (amount of heterogeneity accounted for):            29.47%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9286 (SE = 0.1721)
+    ## tau (square root of estimated tau^2 value):             0.9636
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.93%
+    ## H^2 (unaccounted variability / sampling variability):   93.40
+    ## R^2 (amount of heterogeneity accounted for):            26.40%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1322.5936, p-val < .0001
+    ## QE(df = 65) = 1446.0999, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 26.9964, p-val < .0001
+    ## QM(df = 2) = 23.6596, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1815  0.2034   0.8926  0.3721  -0.2171  0.5802      
-    ## TDD       -0.4939  0.3066  -1.6110  0.1072  -1.0949  0.1070      
-    ## typeVR     1.2267  0.2462   4.9830  <.0001   0.7442  1.7092  *** 
+    ## intrcpt    0.1745  0.2071   0.8427  0.3994  -0.2314  0.5805      
+    ## TDD       -0.4512  0.3122  -1.4451  0.1484  -1.0632  0.1608      
+    ## typeVR     1.1737  0.2506   4.6828  <.0001   0.6824  1.6649  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2545,24 +2512,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TTEC + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9344 (SE = 0.1732)
-    ## tau (square root of estimated tau^2 value):             0.9667
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.88%
-    ## H^2 (unaccounted variability / sampling variability):   89.25
-    ## R^2 (amount of heterogeneity accounted for):            26.30%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9596 (SE = 0.1776)
+    ## tau (square root of estimated tau^2 value):             0.9796
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.00%
+    ## H^2 (unaccounted variability / sampling variability):   99.65
+    ## R^2 (amount of heterogeneity accounted for):            23.95%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1703.5864, p-val < .0001
+    ## QE(df = 65) = 1583.7454, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 23.4585, p-val < .0001
+    ## QM(df = 2) = 21.0551, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0838  0.2186  0.3833  0.7015  -0.3447  0.5123      
-    ## TTEC       0.0458  0.2562  0.1789  0.8580  -0.4564  0.5480      
-    ## typeVR     1.2166  0.2513  4.8411  <.0001   0.7241  1.7092  *** 
+    ## intrcpt    0.0683  0.2215  0.3085  0.7577  -0.3657  0.5024      
+    ## TTEC       0.0923  0.2595  0.3556  0.7222  -0.4164  0.6009      
+    ## typeVR     1.1649  0.2545  4.5770  <.0001   0.6661  1.6637  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2574,24 +2541,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSTR + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9068 (SE = 0.1683)
-    ## tau (square root of estimated tau^2 value):             0.9522
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.78%
-    ## H^2 (unaccounted variability / sampling variability):   81.89
-    ## R^2 (amount of heterogeneity accounted for):            28.48%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9283 (SE = 0.1721)
+    ## tau (square root of estimated tau^2 value):             0.9635
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.91%
+    ## H^2 (unaccounted variability / sampling variability):   91.61
+    ## R^2 (amount of heterogeneity accounted for):            26.43%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1706.4227, p-val < .0001
+    ## QE(df = 65) = 1605.1423, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 26.2293, p-val < .0001
+    ## QM(df = 2) = 24.0102, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0159  0.2062  0.0770  0.9386  -0.3882  0.4199      
-    ## TSTR       0.4863  0.3323  1.4635  0.1433  -0.1650  1.1376      
-    ## typeVR     1.2310  0.2479  4.9646  <.0001   0.7450  1.7169  *** 
+    ## intrcpt    0.0095  0.2085  0.0458  0.9635  -0.3991  0.4182      
+    ## TSTR       0.5242  0.3361  1.5597  0.1188  -0.1345  1.1829      
+    ## typeVR     1.1799  0.2507  4.7062  <.0001   0.6885  1.6714  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2603,24 +2570,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ CONT + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9326 (SE = 0.1728)
-    ## tau (square root of estimated tau^2 value):             0.9657
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.87%
-    ## H^2 (unaccounted variability / sampling variability):   88.16
-    ## R^2 (amount of heterogeneity accounted for):            26.44%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9608 (SE = 0.1778)
+    ## tau (square root of estimated tau^2 value):             0.9802
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.98%
+    ## H^2 (unaccounted variability / sampling variability):   97.84
+    ## R^2 (amount of heterogeneity accounted for):            23.85%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1600.8171, p-val < .0001
+    ## QE(df = 65) = 1512.5971, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 23.6288, p-val < .0001
+    ## QM(df = 2) = 20.9843, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1293  0.2145   0.6028  0.5466  -0.2911  0.5497      
-    ## CONTALT   -0.1033  0.2579  -0.4006  0.6887  -0.6087  0.4021      
-    ## typeVR     1.2216  0.2514   4.8587  <.0001   0.7288  1.7143  *** 
+    ## intrcpt    0.1209  0.2176   0.5557  0.5784  -0.3056  0.5474      
+    ## CONTALT   -0.0742  0.2615  -0.2836  0.7767  -0.5867  0.4384      
+    ## typeVR     1.1681  0.2550   4.5806  <.0001   0.6683  1.6679  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2632,24 +2599,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Duration + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9187 (SE = 0.1704)
-    ## tau (square root of estimated tau^2 value):             0.9585
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.86%
-    ## H^2 (unaccounted variability / sampling variability):   88.02
-    ## R^2 (amount of heterogeneity accounted for):            27.54%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9490 (SE = 0.1757)
+    ## tau (square root of estimated tau^2 value):             0.9742
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.99%
+    ## H^2 (unaccounted variability / sampling variability):   98.80
+    ## R^2 (amount of heterogeneity accounted for):            24.78%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1706.7328, p-val < .0001
+    ## QE(df = 65) = 1594.3164, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 24.8606, p-val < .0001
+    ## QM(df = 2) = 21.9660, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    -0.0989  0.2768  -0.3572  0.7210  -0.6414  0.4437      
-    ## Duration    0.2610  0.2532   1.0312  0.3025  -0.2351  0.7572      
-    ## typeVR      1.2671  0.2541   4.9857  <.0001   0.7690  1.7652  *** 
+    ## intrcpt    -0.0776  0.2811  -0.2761  0.7824  -0.6285  0.4733      
+    ## Duration    0.2332  0.2570   0.9076  0.3641  -0.2705  0.7370      
+    ## typeVR      1.2098  0.2581   4.6868  <.0001   0.7039  1.7157  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2661,24 +2628,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Hours + type)
     ## 
     ## Mixed-Effects Model (k = 66; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9634 (SE = 0.1812)
-    ## tau (square root of estimated tau^2 value):             0.9815
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.73%
-    ## H^2 (unaccounted variability / sampling variability):   79.00
-    ## R^2 (amount of heterogeneity accounted for):            25.44%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9919 (SE = 0.1863)
+    ## tau (square root of estimated tau^2 value):             0.9959
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.88%
+    ## H^2 (unaccounted variability / sampling variability):   89.49
+    ## R^2 (amount of heterogeneity accounted for):            22.97%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 63) = 1433.1589, p-val < .0001
+    ## QE(df = 63) = 1448.0226, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 22.0070, p-val < .0001
+    ## QM(df = 2) = 19.6022, p-val < .0001
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt   -0.0058  0.2705  -0.0215  0.9828  -0.5360  0.5244      
-    ## Hours      0.0035  0.0057   0.6093  0.5423  -0.0077  0.0146      
-    ## typeVR     1.2300  0.2629   4.6793  <.0001   0.7148  1.7452  *** 
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0013  0.2744  0.0049  0.9961  -0.5364  0.5391      
+    ## Hours      0.0032  0.0058  0.5590  0.5761  -0.0081  0.0146      
+    ## typeVR     1.1775  0.2666  4.4174  <.0001   0.6550  1.6999  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2690,25 +2657,25 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ design + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.8728 (SE = 0.1636)
-    ## tau (square root of estimated tau^2 value):             0.9343
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.81%
-    ## H^2 (unaccounted variability / sampling variability):   84.10
-    ## R^2 (amount of heterogeneity accounted for):            31.15%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.8945 (SE = 0.1674)
+    ## tau (square root of estimated tau^2 value):             0.9458
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.93%
+    ## H^2 (unaccounted variability / sampling variability):   93.76
+    ## R^2 (amount of heterogeneity accounted for):            29.10%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 64) = 1440.9635, p-val < .0001
+    ## QE(df = 64) = 1279.7340, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:4):
-    ## QM(df = 3) = 29.7977, p-val < .0001
+    ## QM(df = 3) = 27.3859, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.1799  0.2114   0.8510  0.3948  -0.2345  0.5943      
-    ## designQED   -0.2492  0.2546  -0.9785  0.3278  -0.7482  0.2499      
-    ## designWSD    1.0362  0.5733   1.8075  0.0707  -0.0874  2.1597    . 
-    ## typeVR       1.1364  0.2466   4.6082  <.0001   0.6531  1.6198  *** 
+    ## intrcpt      0.1772  0.2139   0.8283  0.4075  -0.2421  0.5965      
+    ## designQED   -0.2404  0.2575  -0.9335  0.3505  -0.7451  0.2643      
+    ## designWSD    1.0952  0.5801   1.8878  0.0591  -0.0419  2.2322    . 
+    ## typeVR       1.0803  0.2495   4.3300  <.0001   0.5913  1.5693  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2720,25 +2687,25 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grade + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.9475 (SE = 0.1769)
-    ## tau (square root of estimated tau^2 value):             0.9734
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.87%
-    ## H^2 (unaccounted variability / sampling variability):   88.82
-    ## R^2 (amount of heterogeneity accounted for):            25.27%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.9739 (SE = 0.1816)
+    ## tau (square root of estimated tau^2 value):             0.9868
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.99%
+    ## H^2 (unaccounted variability / sampling variability):   98.71
+    ## R^2 (amount of heterogeneity accounted for):            22.82%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 64) = 1601.3558, p-val < .0001
+    ## QE(df = 64) = 1516.6008, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:4):
-    ## QM(df = 3) = 23.4122, p-val < .0001
+    ## QM(df = 3) = 20.9680, p-val = 0.0001
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.1347  0.2737   0.4923  0.6225  -0.4017  0.6712      
-    ## gradeK-2    -0.0506  0.2623  -0.1928  0.8471  -0.5648  0.4636      
-    ## gradeBoth    0.4626  1.0132   0.4565  0.6480  -1.5233  2.4485      
-    ## typeVR       1.2031  0.2543   4.7316  <.0001   0.7047  1.7014  *** 
+    ## intrcpt      0.1305  0.2773   0.4704  0.6380  -0.4131  0.6741      
+    ## gradeK-2    -0.0444  0.2658  -0.1669  0.8675  -0.5653  0.4766      
+    ## gradeBoth    0.5199  1.0269   0.5063  0.6127  -1.4928  2.5325      
+    ## typeVR       1.1500  0.2576   4.4643  <.0001   0.6451  1.6549  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2750,24 +2717,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ grouping + type)
     ## 
     ## Mixed-Effects Model (k = 68; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.8239 (SE = 0.1536)
-    ## tau (square root of estimated tau^2 value):             0.9077
-    ## I^2 (residual heterogeneity / unaccounted variability): 98.70%
-    ## H^2 (unaccounted variability / sampling variability):   76.81
-    ## R^2 (amount of heterogeneity accounted for):            35.02%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.8586 (SE = 0.1597)
+    ## tau (square root of estimated tau^2 value):             0.9266
+    ## I^2 (residual heterogeneity / unaccounted variability): 98.84%
+    ## H^2 (unaccounted variability / sampling variability):   86.49
+    ## R^2 (amount of heterogeneity accounted for):            31.95%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 65) = 1554.1345, p-val < .0001
+    ## QE(df = 65) = 1564.4234, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 33.3747, p-val < .0001
+    ## QM(df = 2) = 29.5679, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    -0.0859  0.2016  -0.4263  0.6699  -0.4810  0.3092      
-    ## grouping    0.6253  0.2353   2.6573  0.0079   0.1641  1.0865   ** 
-    ## typeVR      1.1176  0.2394   4.6677  <.0001   0.6483  1.5868  *** 
+    ## intrcpt    -0.0801  0.2056  -0.3896  0.6968  -0.4831  0.3229      
+    ## grouping    0.6064  0.2399   2.5275  0.0115   0.1362  1.0766    * 
+    ## typeVR      1.0683  0.2442   4.3753  <.0001   0.5898  1.5469  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2781,23 +2748,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4961 (SE = 0.3409)
-    ## tau (square root of estimated tau^2 value):             1.2232
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.15%
-    ## H^2 (unaccounted variability / sampling variability):   117.09
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5269 (SE = 0.3476)
+    ## tau (square root of estimated tau^2 value):             1.2357
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.27%
+    ## H^2 (unaccounted variability / sampling variability):   137.76
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1406.8292, p-val < .0001
+    ## QE(df = 42) = 1486.7688, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.5832, p-val = 0.4451
+    ## QM(df = 1) = 0.8528, p-val = 0.3558
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.2365  0.2209  5.5980  <.0001   0.8036  1.6694  *** 
-    ## Content    0.3240  0.4243  0.7637  0.4451  -0.5076  1.1557      
+    ## intrcpt    1.1658  0.2230  5.2275  <.0001   0.7287  1.6029  *** 
+    ## Content    0.3957  0.4285  0.9235  0.3558  -0.4441  1.2354      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2809,18 +2776,18 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Random-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 1.4740 (SE = 0.3321)
-    ## tau (square root of estimated tau^2 value):      1.2141
-    ## I^2 (total heterogeneity / total variability):   99.21%
-    ## H^2 (total variability / sampling variability):  125.89
+    ## tau^2 (estimated amount of total heterogeneity): 1.5141 (SE = 0.3407)
+    ## tau (square root of estimated tau^2 value):      1.2305
+    ## I^2 (total heterogeneity / total variability):   99.33%
+    ## H^2 (total variability / sampling variability):  148.48
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 43) = 1675.9200, p-val < .0001
+    ## Q(df = 43) = 1578.6988, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   1.3240  0.1872  7.0711  <.0001  0.9570  1.6910  *** 
+    ##   1.2728  0.1896  6.7116  <.0001  0.9011  1.6445  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2832,23 +2799,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4080 (SE = 0.3216)
-    ## tau (square root of estimated tau^2 value):             1.1866
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.17%
-    ## H^2 (unaccounted variability / sampling variability):   120.06
-    ## R^2 (amount of heterogeneity accounted for):            4.48%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.4194 (SE = 0.3240)
+    ## tau (square root of estimated tau^2 value):             1.1914
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.28%
+    ## H^2 (unaccounted variability / sampling variability):   139.45
+    ## R^2 (amount of heterogeneity accounted for):            6.25%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1499.5070, p-val < .0001
+    ## QE(df = 42) = 1309.1288, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.6383, p-val = 0.1043
+    ## QM(df = 1) = 3.3726, p-val = 0.0663
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.0777  0.2375  4.5370  <.0001   0.6121  1.5432  *** 
-    ## TMULT      0.6061  0.3731  1.6243  0.1043  -0.1252  1.3374      
+    ## intrcpt    0.9930  0.2384  4.1655  <.0001   0.5258  1.4603  *** 
+    ## TMULT      0.6878  0.3745  1.8365  0.0663  -0.0462  1.4219    . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2860,18 +2827,18 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Random-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 1.4740 (SE = 0.3321)
-    ## tau (square root of estimated tau^2 value):      1.2141
-    ## I^2 (total heterogeneity / total variability):   99.21%
-    ## H^2 (total variability / sampling variability):  125.89
+    ## tau^2 (estimated amount of total heterogeneity): 1.5141 (SE = 0.3407)
+    ## tau (square root of estimated tau^2 value):      1.2305
+    ## I^2 (total heterogeneity / total variability):   99.33%
+    ## H^2 (total variability / sampling variability):  148.48
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 43) = 1675.9200, p-val < .0001
+    ## Q(df = 43) = 1578.6988, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   1.3240  0.1872  7.0711  <.0001  0.9570  1.6910  *** 
+    ##   1.2728  0.1896  6.7116  <.0001  0.9011  1.6445  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2883,23 +2850,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4758 (SE = 0.3363)
-    ## tau (square root of estimated tau^2 value):             1.2148
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.21%
-    ## H^2 (unaccounted variability / sampling variability):   126.97
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5066 (SE = 0.3430)
+    ## tau (square root of estimated tau^2 value):             1.2274
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.33%
+    ## H^2 (unaccounted variability / sampling variability):   149.43
+    ## R^2 (amount of heterogeneity accounted for):            0.49%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1529.3970, p-val < .0001
+    ## QE(df = 42) = 1387.4803, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.7264, p-val = 0.3941
+    ## QM(df = 1) = 0.9435, p-val = 0.3314
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.2392  0.2121  5.8414  <.0001   0.8234  1.6550  *** 
-    ## TSYN       0.3854  0.4522  0.8523  0.3941  -0.5009  1.2718      
+    ## intrcpt    1.1751  0.2142  5.4851  <.0001   0.7552  1.5950  *** 
+    ## TSYN       0.4436  0.4566  0.9714  0.3314  -0.4514  1.3386      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2911,23 +2878,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.3032 (SE = 0.2987)
-    ## tau (square root of estimated tau^2 value):             1.1416
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.10%
-    ## H^2 (unaccounted variability / sampling variability):   111.21
-    ## R^2 (amount of heterogeneity accounted for):            11.58%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.3094 (SE = 0.3000)
+    ## tau (square root of estimated tau^2 value):             1.1443
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.22%
+    ## H^2 (unaccounted variability / sampling variability):   128.74
+    ## R^2 (amount of heterogeneity accounted for):            13.51%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1487.8451, p-val < .0001
+    ## QE(df = 42) = 1297.0458, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 6.2515, p-val = 0.0124
+    ## QM(df = 1) = 7.1994, p-val = 0.0073
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval   ci.lb   ci.ub 
-    ## intrcpt    1.0166  0.2147  4.7352  <.0001  0.5958  1.4373  *** 
-    ## TMOR       0.9433  0.3773  2.5003  0.0124  0.2039  1.6827    * 
+    ## intrcpt    0.9419  0.2151  4.3783  <.0001  0.5202  1.3635  *** 
+    ## TMOR       1.0146  0.3781  2.6832  0.0073  0.2735  1.7557   ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2939,23 +2906,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4571 (SE = 0.3323)
-    ## tau (square root of estimated tau^2 value):             1.2071
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.20%
-    ## H^2 (unaccounted variability / sampling variability):   125.31
-    ## R^2 (amount of heterogeneity accounted for):            1.14%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.4826 (SE = 0.3378)
+    ## tau (square root of estimated tau^2 value):             1.2176
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.32%
+    ## H^2 (unaccounted variability / sampling variability):   146.91
+    ## R^2 (amount of heterogeneity accounted for):            2.08%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1497.0856, p-val < .0001
+    ## QE(df = 42) = 1340.6034, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.2655, p-val = 0.2606
+    ## QM(df = 1) = 1.6238, p-val = 0.2026
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.1915  0.2203  5.4087  <.0001   0.7597  1.6232  *** 
-    ## TLC        0.4639  0.4123  1.1249  0.2606  -0.3443  1.2720      
+    ## intrcpt    1.1213  0.2221  5.0484  <.0001   0.6860  1.5566  *** 
+    ## TLC        0.5297  0.4157  1.2743  0.2026  -0.2850  1.3445      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2967,23 +2934,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.5095 (SE = 0.3441)
-    ## tau (square root of estimated tau^2 value):             1.2286
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.20%
-    ## H^2 (unaccounted variability / sampling variability):   124.69
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5461 (SE = 0.3521)
+    ## tau (square root of estimated tau^2 value):             1.2434
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.32%
+    ## H^2 (unaccounted variability / sampling variability):   146.63
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1608.2916, p-val < .0001
+    ## QE(df = 42) = 1544.2135, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1217, p-val = 0.7272
+    ## QM(df = 1) = 0.2304, p-val = 0.6312
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.3426  0.1965   6.8336  <.0001   0.9575  1.7277  *** 
-    ## TRC       -0.2576  0.7385  -0.3488  0.7272  -1.7051  1.1899      
+    ## intrcpt    1.2986  0.1987   6.5347  <.0001   0.9091  1.6880  *** 
+    ## TRC       -0.3588  0.7475  -0.4800  0.6312  -1.8238  1.1062      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -2995,23 +2962,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4738 (SE = 0.3360)
-    ## tau (square root of estimated tau^2 value):             1.2140
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.19%
-    ## H^2 (unaccounted variability / sampling variability):   122.97
-    ## R^2 (amount of heterogeneity accounted for):            0.01%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5090 (SE = 0.3436)
+    ## tau (square root of estimated tau^2 value):             1.2284
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.31%
+    ## H^2 (unaccounted variability / sampling variability):   144.57
+    ## R^2 (amount of heterogeneity accounted for):            0.34%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1448.3424, p-val < .0001
+    ## QE(df = 42) = 1382.8962, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.8650, p-val = 0.3524
+    ## QM(df = 1) = 0.9908, p-val = 0.3195
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.2011  0.2292  5.2399  <.0001   0.7518  1.6503  *** 
-    ## TCOM       0.3696  0.3974  0.9300  0.3524  -0.4092  1.1484      
+    ## intrcpt    1.1397  0.2318  4.9166  <.0001   0.6853  1.5940  *** 
+    ## TCOM       0.4000  0.4018  0.9954  0.3195  -0.3876  1.1875      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3023,23 +2990,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4404 (SE = 0.3287)
-    ## tau (square root of estimated tau^2 value):             1.2002
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.20%
-    ## H^2 (unaccounted variability / sampling variability):   125.14
-    ## R^2 (amount of heterogeneity accounted for):            2.28%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.4917 (SE = 0.3399)
+    ## tau (square root of estimated tau^2 value):             1.2214
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.33%
+    ## H^2 (unaccounted variability / sampling variability):   148.92
+    ## R^2 (amount of heterogeneity accounted for):            1.47%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1674.0970, p-val < .0001
+    ## QE(df = 42) = 1578.6983, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.0127, p-val = 0.1560
+    ## QM(df = 1) = 1.6845, p-val = 0.1943
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.4179  0.1967   7.2069  <.0001   1.0323  1.8035  *** 
-    ## TPAD      -0.8267  0.5827  -1.4187  0.1560  -1.9687  0.3154      
+    ## intrcpt    1.3602  0.2000   6.7996  <.0001   0.9682  1.7523  *** 
+    ## TPAD      -0.7691  0.5926  -1.2979  0.1943  -1.9305  0.3923      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3051,23 +3018,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 35; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.5902 (SE = 0.4045)
-    ## tau (square root of estimated tau^2 value):             1.2610
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.32%
-    ## H^2 (unaccounted variability / sampling variability):   146.30
-    ## R^2 (amount of heterogeneity accounted for):            8.73%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.6388 (SE = 0.4163)
+    ## tau (square root of estimated tau^2 value):             1.2802
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.41%
+    ## H^2 (unaccounted variability / sampling variability):   169.64
+    ## R^2 (amount of heterogeneity accounted for):            8.80%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 33) = 1222.9699, p-val < .0001
+    ## QE(df = 33) = 1230.4220, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.9059, p-val = 0.0481
+    ## QM(df = 1) = 3.9508, p-val = 0.0468
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb    ci.ub 
-    ## intrcpt      2.1287  0.4093   5.2010  <.0001   1.3265   2.9308  *** 
-    ## LowIncome   -0.9537  0.4825  -1.9763  0.0481  -1.8994  -0.0079    * 
+    ## intrcpt      2.0888  0.4152   5.0308  <.0001   1.2750   2.9025  *** 
+    ## LowIncome   -0.9730  0.4895  -1.9877  0.0468  -1.9325  -0.0136    * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3079,23 +3046,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4784 (SE = 0.3371)
-    ## tau (square root of estimated tau^2 value):             1.2159
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.19%
-    ## H^2 (unaccounted variability / sampling variability):   123.45
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5238 (SE = 0.3470)
+    ## tau (square root of estimated tau^2 value):             1.2344
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.32%
+    ## H^2 (unaccounted variability / sampling variability):   146.14
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1564.7017, p-val < .0001
+    ## QE(df = 42) = 1477.6432, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.0025, p-val = 0.3167
+    ## QM(df = 1) = 0.8623, p-val = 0.3531
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.4470  0.2242   6.4555  <.0001   1.0077  1.8864  *** 
-    ## EL        -0.4096  0.4091  -1.0012  0.3167  -1.2115  0.3922      
+    ## intrcpt    1.3886  0.2274   6.1071  <.0001   0.9430  1.8342  *** 
+    ## EL        -0.3855  0.4151  -0.9286  0.3531  -1.1991  0.4281      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3107,23 +3074,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4327 (SE = 0.3272)
-    ## tau (square root of estimated tau^2 value):             1.1969
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.11%
-    ## H^2 (unaccounted variability / sampling variability):   112.96
-    ## R^2 (amount of heterogeneity accounted for):            2.80%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.4886 (SE = 0.3394)
+    ## tau (square root of estimated tau^2 value):             1.2201
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.26%
+    ## H^2 (unaccounted variability / sampling variability):   134.96
+    ## R^2 (amount of heterogeneity accounted for):            1.68%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1207.9211, p-val < .0001
+    ## QE(df = 42) = 1383.4488, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.1560, p-val = 0.1420
+    ## QM(df = 1) = 1.7166, p-val = 0.1901
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.4537  0.2049   7.0959  <.0001   1.0522  1.8552  *** 
-    ## TDD       -0.6955  0.4737  -1.4683  0.1420  -1.6239  0.2329      
+    ## intrcpt    1.3907  0.2086   6.6666  <.0001   0.9818  1.7995  *** 
+    ## TDD       -0.6323  0.4826  -1.3102  0.1901  -1.5782  0.3136      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3135,23 +3102,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.5108 (SE = 0.3443)
-    ## tau (square root of estimated tau^2 value):             1.2291
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.21%
-    ## H^2 (unaccounted variability / sampling variability):   127.06
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5471 (SE = 0.3521)
+    ## tau (square root of estimated tau^2 value):             1.2438
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.33%
+    ## H^2 (unaccounted variability / sampling variability):   150.05
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1669.9572, p-val < .0001
+    ## QE(df = 42) = 1537.5818, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0477, p-val = 0.8272
+    ## QM(df = 1) = 0.1515, p-val = 0.6971
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.2957  0.2308  5.6147  <.0001   0.8434  1.7479  *** 
-    ## TTEC       0.0883  0.4043  0.2183  0.8272  -0.7041  0.8806      
+    ## intrcpt    1.2214  0.2333  5.2345  <.0001   0.7641  1.6787  *** 
+    ## TTEC       0.1592  0.4089  0.3893  0.6971  -0.6423  0.9607      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3163,23 +3130,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4120 (SE = 0.3226)
-    ## tau (square root of estimated tau^2 value):             1.1883
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.17%
-    ## H^2 (unaccounted variability / sampling variability):   120.99
-    ## R^2 (amount of heterogeneity accounted for):            4.21%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.4378 (SE = 0.3282)
+    ## tau (square root of estimated tau^2 value):             1.1991
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.29%
+    ## H^2 (unaccounted variability / sampling variability):   141.80
+    ## R^2 (amount of heterogeneity accounted for):            5.04%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1634.3480, p-val < .0001
+    ## QE(df = 42) = 1501.0757, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.0049, p-val = 0.0830
+    ## QM(df = 1) = 3.3562, p-val = 0.0670
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.1956  0.1977  6.0487  <.0001   0.8082  1.5831  *** 
-    ## TSTR       0.9194  0.5304  1.7335  0.0830  -0.1201  1.9589    . 
+    ## intrcpt    1.1359  0.1994  5.6975  <.0001   0.7451  1.5266  *** 
+    ## TSTR       0.9802  0.5351  1.8320  0.0670  -0.0685  2.0289    . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3191,23 +3158,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.5073 (SE = 0.3434)
-    ## tau (square root of estimated tau^2 value):             1.2277
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.19%
-    ## H^2 (unaccounted variability / sampling variability):   123.93
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5511 (SE = 0.3529)
+    ## tau (square root of estimated tau^2 value):             1.2454
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.30%
+    ## H^2 (unaccounted variability / sampling variability):   143.87
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1524.7005, p-val < .0001
+    ## QE(df = 42) = 1448.4606, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1410, p-val = 0.7072
+    ## QM(df = 1) = 0.0690, p-val = 0.7928
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.3756  0.2333   5.8971  <.0001   0.9184  1.8328  *** 
-    ## CONTALT   -0.1499  0.3991  -0.3756  0.7072  -0.9320  0.6323      
+    ## intrcpt    1.3095  0.2364   5.5384  <.0001   0.8461  1.7730  *** 
+    ## CONTALT   -0.1062  0.4046  -0.2626  0.7928  -0.8992  0.6867      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3219,23 +3186,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4668 (SE = 0.3345)
-    ## tau (square root of estimated tau^2 value):             1.2111
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.19%
-    ## H^2 (unaccounted variability / sampling variability):   123.82
-    ## R^2 (amount of heterogeneity accounted for):            0.49%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5162 (SE = 0.3453)
+    ## tau (square root of estimated tau^2 value):             1.2314
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.32%
+    ## H^2 (unaccounted variability / sampling variability):   147.45
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1675.4681, p-val < .0001
+    ## QE(df = 42) = 1561.1366, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.2136, p-val = 0.2706
+    ## QM(df = 1) = 0.9624, p-val = 0.3266
     ## 
     ## Model Results:
     ## 
     ##           estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt     1.0930  0.2808  3.8922  <.0001   0.5426  1.6434  *** 
-    ## Duration    0.4143  0.3761  1.1016  0.2706  -0.3228  1.1515      
+    ## intrcpt     1.0641  0.2851  3.7319  0.0002   0.5052  1.6230  *** 
+    ## Duration    0.3748  0.3821  0.9810  0.3266  -0.3740  1.1236      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3247,23 +3214,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.5078 (SE = 0.3436)
-    ## tau (square root of estimated tau^2 value):             1.2279
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.15%
-    ## H^2 (unaccounted variability / sampling variability):   117.52
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5499 (SE = 0.3528)
+    ## tau (square root of estimated tau^2 value):             1.2449
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.29%
+    ## H^2 (unaccounted variability / sampling variability):   139.93
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1382.1947, p-val < .0001
+    ## QE(df = 42) = 1406.3902, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1535, p-val = 0.6952
+    ## QM(df = 1) = 0.1181, p-val = 0.7311
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    1.2362  0.2942  4.2019  <.0001   0.6596  1.8128  *** 
-    ## Hours      0.0034  0.0086  0.3918  0.6952  -0.0134  0.0201      
+    ## intrcpt    1.1948  0.2981  4.0088  <.0001   0.6107  1.7790  *** 
+    ## Hours      0.0030  0.0087  0.3437  0.7311  -0.0140  0.0200      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3275,24 +3242,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.4228 (SE = 0.3290)
-    ## tau (square root of estimated tau^2 value):             1.1928
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.17%
-    ## H^2 (unaccounted variability / sampling variability):   120.89
-    ## R^2 (amount of heterogeneity accounted for):            3.47%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.4577 (SE = 0.3366)
+    ## tau (square root of estimated tau^2 value):             1.2073
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.30%
+    ## H^2 (unaccounted variability / sampling variability):   143.11
+    ## R^2 (amount of heterogeneity accounted for):            3.72%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 41) = 1409.1612, p-val < .0001
+    ## QE(df = 41) = 1244.7195, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 3.3763, p-val = 0.1849
+    ## QM(df = 2) = 3.4672, p-val = 0.1766
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      1.3808  0.2339   5.9028  <.0001   0.9223  1.8392  *** 
-    ## designQED   -0.4054  0.4049  -1.0013  0.3167  -1.1991  0.3882      
-    ## designWSD    0.9739  0.7325   1.3295  0.1837  -0.4618  2.4097      
+    ## intrcpt      1.3211  0.2367   5.5821  <.0001   0.8572  1.7849  *** 
+    ## designQED   -0.3913  0.4095  -0.9556  0.3393  -1.1939  0.4113      
+    ## designWSD    1.0337  0.7413   1.3944  0.1632  -0.4192  2.4867      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3304,24 +3271,24 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.5459 (SE = 0.3564)
-    ## tau (square root of estimated tau^2 value):             1.2434
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.20%
-    ## H^2 (unaccounted variability / sampling variability):   125.00
+    ## tau^2 (estimated amount of residual heterogeneity):     1.5868 (SE = 0.3654)
+    ## tau (square root of estimated tau^2 value):             1.2597
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.32%
+    ## H^2 (unaccounted variability / sampling variability):   146.13
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 41) = 1503.3661, p-val < .0001
+    ## QE(df = 41) = 1444.9920, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 0.2077, p-val = 0.9013
+    ## QM(df = 2) = 0.2239, p-val = 0.8941
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      1.3810  0.3369   4.0993  <.0001   0.7207  2.0413  *** 
-    ## gradeK-2    -0.1011  0.4119  -0.2456  0.8060  -0.9085  0.7062      
-    ## gradeBoth    0.4193  1.2979   0.3231  0.7466  -2.1244  2.9631      
+    ## intrcpt      1.3220  0.3412   3.8743  0.0001   0.6532  1.9907  *** 
+    ## gradeK-2    -0.0910  0.4171  -0.2182  0.8272  -0.9086  0.7265      
+    ## gradeBoth    0.4784  1.3146   0.3639  0.7159  -2.0982  3.0550      
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3333,23 +3300,23 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
     ## 
     ## Mixed-Effects Model (k = 44; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     1.2716 (SE = 0.2917)
-    ## tau (square root of estimated tau^2 value):             1.1277
-    ## I^2 (residual heterogeneity / unaccounted variability): 99.02%
-    ## H^2 (unaccounted variability / sampling variability):   101.84
-    ## R^2 (amount of heterogeneity accounted for):            13.73%
+    ## tau^2 (estimated amount of residual heterogeneity):     1.3286 (SE = 0.3041)
+    ## tau (square root of estimated tau^2 value):             1.1526
+    ## I^2 (residual heterogeneity / unaccounted variability): 99.17%
+    ## H^2 (unaccounted variability / sampling variability):   120.95
+    ## R^2 (amount of heterogeneity accounted for):            12.25%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 42) = 1364.3299, p-val < .0001
+    ## QE(df = 42) = 1479.2581, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 6.6829, p-val = 0.0097
+    ## QM(df = 1) = 6.0361, p-val = 0.0140
     ## 
     ## Model Results:
     ## 
     ##           estimate      se    zval    pval   ci.lb   ci.ub 
-    ## intrcpt     0.9125  0.2355  3.8741  0.0001  0.4509  1.3742  *** 
-    ## grouping    0.9064  0.3506  2.5851  0.0097  0.2192  1.5936   ** 
+    ## intrcpt     0.8735  0.2405  3.6321  0.0003  0.4021  1.3449  *** 
+    ## grouping    0.8795  0.3580  2.4569  0.0140  0.1779  1.5812    * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3946,25 +3913,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0046 (SE = 0.0054)
-    ## tau (square root of estimated tau^2 value):             0.0680
-    ## I^2 (residual heterogeneity / unaccounted variability): 33.49%
-    ## H^2 (unaccounted variability / sampling variability):   1.50
-    ## R^2 (amount of heterogeneity accounted for):            74.22%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0053)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 19.8823, p-val = 0.1339
+    ## QE(df = 10) = 7.9677, p-val = 0.6320
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 13.3295, p-val = 0.0003
+    ## QM(df = 1) = 4.6781, p-val = 0.0306
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0467  0.0542  0.8610  0.3892  -0.0596  0.1529      
-    ## typeLR     0.2442  0.0669  3.6510  0.0003   0.1131  0.3753  *** 
+    ## intrcpt    0.0302  0.0328  0.9204  0.3574  -0.0341  0.0945    
+    ## typeLR     0.1551  0.0717  2.1629  0.0306   0.0145  0.2956  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -3974,25 +3941,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Content)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0161 (SE = 0.0111)
-    ## tau (square root of estimated tau^2 value):             0.1269
-    ## I^2 (residual heterogeneity / unaccounted variability): 68.65%
-    ## H^2 (unaccounted variability / sampling variability):   3.19
-    ## R^2 (amount of heterogeneity accounted for):            10.29%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0060 (SE = 0.0098)
+    ## tau (square root of estimated tau^2 value):             0.0775
+    ## I^2 (residual heterogeneity / unaccounted variability): 27.40%
+    ## H^2 (unaccounted variability / sampling variability):   1.38
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 60.7394, p-val < .0001
+    ## QE(df = 10) = 12.4870, p-val = 0.2538
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.9659, p-val = 0.1609
+    ## QM(df = 1) = 0.5495, p-val = 0.4585
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2262  0.0484   4.6775  <.0001   0.1314  0.3210  *** 
-    ## Content   -0.1807  0.1288  -1.4021  0.1609  -0.4332  0.0719      
+    ## intrcpt    0.1206  0.0502   2.4012  0.0163   0.0222  0.2190  * 
+    ## Content   -0.0833  0.1124  -0.7413  0.4585  -0.3035  0.1369    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4002,25 +3969,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ PD)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0184 (SE = 0.0118)
-    ## tau (square root of estimated tau^2 value):             0.1358
-    ## I^2 (residual heterogeneity / unaccounted variability): 72.20%
-    ## H^2 (unaccounted variability / sampling variability):   3.60
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0039 (SE = 0.0076)
+    ## tau (square root of estimated tau^2 value):             0.0626
+    ## I^2 (residual heterogeneity / unaccounted variability): 22.09%
+    ## H^2 (unaccounted variability / sampling variability):   1.28
+    ## R^2 (amount of heterogeneity accounted for):            1.97%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.9237, p-val < .0001
+    ## QE(df = 10) = 12.3024, p-val = 0.2653
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0156, p-val = 0.9006
+    ## QM(df = 1) = 0.2188, p-val = 0.6400
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1995  0.0472  4.2235  <.0001   0.1069  0.2921  *** 
-    ## PD         0.0424  0.3393  0.1249  0.9006  -0.6226  0.7073      
+    ## intrcpt    0.0939  0.0419  2.2420  0.0250   0.0118  0.1760  * 
+    ## PD         0.1480  0.3164  0.4678  0.6400  -0.4721  0.7681    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4030,25 +3997,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMULT)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0193 (SE = 0.0125)
-    ## tau (square root of estimated tau^2 value):             0.1388
-    ## I^2 (residual heterogeneity / unaccounted variability): 72.38%
-    ## H^2 (unaccounted variability / sampling variability):   3.62
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0051)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.7392, p-val < .0001
+    ## QE(df = 10) = 9.4427, p-val = 0.4907
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1005, p-val = 0.7513
+    ## QM(df = 1) = 3.2030, p-val = 0.0735
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2093  0.0553   3.7845  0.0002   0.1009  0.3176  *** 
-    ## TMULT     -0.0341  0.1077  -0.3170  0.7513  -0.2452  0.1769      
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0380  0.0323  1.1790  0.2384  -0.0252  0.1013    
+    ## TMULT      0.1353  0.0756  1.7897  0.0735  -0.0129  0.2834  . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4058,20 +4025,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TVOC)
 ```
 
     ## 
-    ## Random-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0180 (SE = 0.0116)
-    ## tau (square root of estimated tau^2 value):      0.1340
-    ## I^2 (total heterogeneity / total variability):   70.37%
-    ## H^2 (total variability / sampling variability):  3.38
+    ## tau^2 (estimated amount of total heterogeneity): 0.0040 (SE = 0.0076)
+    ## tau (square root of estimated tau^2 value):      0.0633
+    ## I^2 (total heterogeneity / total variability):   21.15%
+    ## H^2 (total variability / sampling variability):  1.27
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 15) = 64.9402, p-val < .0001
+    ## Q(df = 11) = 12.6457, p-val = 0.3171
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.2004  0.0464  4.3206  <.0001  0.1095  0.2914  *** 
+    ##   0.0968  0.0417  2.3245  0.0201  0.0152  0.1785  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4081,25 +4048,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSYN)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0194 (SE = 0.0126)
-    ## tau (square root of estimated tau^2 value):             0.1393
-    ## I^2 (residual heterogeneity / unaccounted variability): 72.62%
-    ## H^2 (unaccounted variability / sampling variability):   3.65
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0048)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.9391, p-val < .0001
+    ## QE(df = 10) = 8.7385, p-val = 0.5571
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0028, p-val = 0.9578
+    ## QM(df = 1) = 3.9072, p-val = 0.0481
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1990  0.0534  3.7248  0.0002   0.0943  0.3036  *** 
-    ## TSYN       0.0062  0.1173  0.0529  0.9578  -0.2236  0.2360      
+    ## intrcpt    0.0393  0.0315  1.2491  0.2116  -0.0224  0.1010    
+    ## TSYN       0.1657  0.0838  1.9767  0.0481   0.0014  0.3301  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4109,25 +4076,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMOR)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0193 (SE = 0.0125)
-    ## tau (square root of estimated tau^2 value):             0.1388
-    ## I^2 (residual heterogeneity / unaccounted variability): 72.38%
-    ## H^2 (unaccounted variability / sampling variability):   3.62
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0051)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.7392, p-val < .0001
+    ## QE(df = 10) = 9.4427, p-val = 0.4907
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1005, p-val = 0.7513
+    ## QM(df = 1) = 3.2030, p-val = 0.0735
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2093  0.0553   3.7845  0.0002   0.1009  0.3176  *** 
-    ## TMOR      -0.0341  0.1077  -0.3170  0.7513  -0.2452  0.1769      
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0380  0.0323  1.1790  0.2384  -0.0252  0.1013    
+    ## TMOR       0.1353  0.0756  1.7897  0.0735  -0.0129  0.2834  . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4137,25 +4104,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TLC)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0166 (SE = 0.0115)
-    ## tau (square root of estimated tau^2 value):             0.1288
-    ## I^2 (residual heterogeneity / unaccounted variability): 68.55%
-    ## H^2 (unaccounted variability / sampling variability):   3.18
-    ## R^2 (amount of heterogeneity accounted for):            7.66%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0095)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 61.7024, p-val < .0001
+    ## QE(df = 10) = 9.1475, p-val = 0.5182
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.7579, p-val = 0.1849
+    ## QM(df = 1) = 3.4982, p-val = 0.0614
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2638  0.0657   4.0161  <.0001   0.1351  0.3926  *** 
-    ## TLC       -0.1201  0.0906  -1.3259  0.1849  -0.2977  0.0574      
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0176  0.0378  0.4657  0.6414  -0.0565  0.0918    
+    ## TLC        0.1111  0.0594  1.8704  0.0614  -0.0053  0.2276  . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4165,25 +4132,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TRC)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0160 (SE = 0.0111)
-    ## tau (square root of estimated tau^2 value):             0.1263
-    ## I^2 (residual heterogeneity / unaccounted variability): 68.21%
-    ## H^2 (unaccounted variability / sampling variability):   3.15
-    ## R^2 (amount of heterogeneity accounted for):            11.16%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0064 (SE = 0.0103)
+    ## tau (square root of estimated tau^2 value):             0.0802
+    ## I^2 (residual heterogeneity / unaccounted variability): 27.85%
+    ## H^2 (unaccounted variability / sampling variability):   1.39
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 60.3916, p-val < .0001
+    ## QE(df = 10) = 12.5827, p-val = 0.2479
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.0205, p-val = 0.1552
+    ## QM(df = 1) = 0.4798, p-val = 0.4885
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2283  0.0487   4.6878  <.0001   0.1329  0.3238  *** 
-    ## TRC       -0.1741  0.1225  -1.4214  0.1552  -0.4142  0.0660      
+    ## intrcpt    0.1228  0.0522   2.3532  0.0186   0.0205  0.2251  * 
+    ## TRC       -0.0740  0.1068  -0.6927  0.4885  -0.2833  0.1353    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4193,25 +4160,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TCOM)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0166 (SE = 0.0115)
-    ## tau (square root of estimated tau^2 value):             0.1288
-    ## I^2 (residual heterogeneity / unaccounted variability): 68.55%
-    ## H^2 (unaccounted variability / sampling variability):   3.18
-    ## R^2 (amount of heterogeneity accounted for):            7.66%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0095)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 61.7024, p-val < .0001
+    ## QE(df = 10) = 9.1475, p-val = 0.5182
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.7579, p-val = 0.1849
+    ## QM(df = 1) = 3.4982, p-val = 0.0614
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2638  0.0657   4.0161  <.0001   0.1351  0.3926  *** 
-    ## TCOM      -0.1201  0.0906  -1.3259  0.1849  -0.2977  0.0574      
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0176  0.0378  0.4657  0.6414  -0.0565  0.0918    
+    ## TCOM       0.1111  0.0594  1.8704  0.0614  -0.0053  0.2276  . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4221,25 +4188,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TPAD)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0184 (SE = 0.0118)
-    ## tau (square root of estimated tau^2 value):             0.1358
-    ## I^2 (residual heterogeneity / unaccounted variability): 72.20%
-    ## H^2 (unaccounted variability / sampling variability):   3.60
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0039 (SE = 0.0076)
+    ## tau (square root of estimated tau^2 value):             0.0626
+    ## I^2 (residual heterogeneity / unaccounted variability): 22.09%
+    ## H^2 (unaccounted variability / sampling variability):   1.28
+    ## R^2 (amount of heterogeneity accounted for):            1.97%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.9237, p-val < .0001
+    ## QE(df = 10) = 12.3024, p-val = 0.2653
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0156, p-val = 0.9006
+    ## QM(df = 1) = 0.2188, p-val = 0.6400
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1995  0.0472  4.2235  <.0001   0.1069  0.2921  *** 
-    ## TPAD       0.0424  0.3393  0.1249  0.9006  -0.6226  0.7073      
+    ## intrcpt    0.0939  0.0419  2.2420  0.0250   0.0118  0.1760  * 
+    ## TPAD       0.1480  0.3164  0.4678  0.6400  -0.4721  0.7681    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4249,25 +4216,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ LowIncome)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 15; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0149 (SE = 0.0117)
-    ## tau (square root of estimated tau^2 value):             0.1220
-    ## I^2 (residual heterogeneity / unaccounted variability): 62.51%
-    ## H^2 (unaccounted variability / sampling variability):   2.67
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0034 (SE = 0.0091)
+    ## tau (square root of estimated tau^2 value):             0.0585
+    ## I^2 (residual heterogeneity / unaccounted variability): 15.43%
+    ## H^2 (unaccounted variability / sampling variability):   1.18
+    ## R^2 (amount of heterogeneity accounted for):            14.41%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 44.6367, p-val < .0001
+    ## QE(df = 10) = 11.1661, p-val = 0.3447
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.5282, p-val = 0.4674
+    ## QM(df = 1) = 0.4458, p-val = 0.5044
     ## 
     ## Model Results:
     ## 
-    ##            estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.1323  0.0755  1.7519  0.0798  -0.0157  0.2804  . 
-    ## LowIncome    0.0695  0.0957  0.7268  0.4674  -0.1180  0.2570    
+    ##            estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt      0.1245  0.0609   2.0455  0.0408   0.0052  0.2437  * 
+    ## LowIncome   -0.0545  0.0816  -0.6677  0.5044  -0.2145  0.1055    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4277,25 +4244,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ EL)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0186 (SE = 0.0121)
-    ## tau (square root of estimated tau^2 value):             0.1362
-    ## I^2 (residual heterogeneity / unaccounted variability): 71.93%
-    ## H^2 (unaccounted variability / sampling variability):   3.56
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0051 (SE = 0.0088)
+    ## tau (square root of estimated tau^2 value):             0.0711
+    ## I^2 (residual heterogeneity / unaccounted variability): 25.44%
+    ## H^2 (unaccounted variability / sampling variability):   1.34
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.2604, p-val < .0001
+    ## QE(df = 10) = 12.5743, p-val = 0.2485
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.3005, p-val = 0.5835
+    ## QM(df = 1) = 0.0000, p-val = 0.9987
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2077  0.0488   4.2594  <.0001   0.1121  0.3033  *** 
-    ## EL        -0.0973  0.1774  -0.5482  0.5835  -0.4451  0.2505      
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.1009  0.0456  2.2110  0.0270   0.0115  0.1903  * 
+    ## EL         0.0003  0.1500  0.0017  0.9987  -0.2938  0.2943    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4305,25 +4272,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TDD)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0186 (SE = 0.0122)
-    ## tau (square root of estimated tau^2 value):             0.1365
-    ## I^2 (residual heterogeneity / unaccounted variability): 71.94%
-    ## H^2 (unaccounted variability / sampling variability):   3.56
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0055 (SE = 0.0091)
+    ## tau (square root of estimated tau^2 value):             0.0741
+    ## I^2 (residual heterogeneity / unaccounted variability): 26.98%
+    ## H^2 (unaccounted variability / sampling variability):   1.37
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.0020, p-val < .0001
+    ## QE(df = 10) = 12.6455, p-val = 0.2442
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.4957, p-val = 0.4814
+    ## QM(df = 1) = 0.0585, p-val = 0.8090
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2084  0.0483   4.3141  <.0001   0.1137  0.3031  *** 
-    ## TDD       -0.1436  0.2040  -0.7041  0.4814  -0.5434  0.2562      
+    ## intrcpt    0.1054  0.0459   2.2963  0.0217   0.0154  0.1954  * 
+    ## TDD       -0.0406  0.1681  -0.2418  0.8090  -0.3701  0.2888    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4333,25 +4300,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TTEC)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0193 (SE = 0.0125)
-    ## tau (square root of estimated tau^2 value):             0.1388
-    ## I^2 (residual heterogeneity / unaccounted variability): 72.38%
-    ## H^2 (unaccounted variability / sampling variability):   3.62
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0051)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.7392, p-val < .0001
+    ## QE(df = 10) = 9.4427, p-val = 0.4907
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1005, p-val = 0.7513
+    ## QM(df = 1) = 3.2030, p-val = 0.0735
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2093  0.0553   3.7845  0.0002   0.1009  0.3176  *** 
-    ## TTEC      -0.0341  0.1077  -0.3170  0.7513  -0.2452  0.1769      
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0380  0.0323  1.1790  0.2384  -0.0252  0.1013    
+    ## TTEC       0.1353  0.0756  1.7897  0.0735  -0.0129  0.2834  . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4361,25 +4328,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSTR)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0186 (SE = 0.0122)
-    ## tau (square root of estimated tau^2 value):             0.1365
-    ## I^2 (residual heterogeneity / unaccounted variability): 71.94%
-    ## H^2 (unaccounted variability / sampling variability):   3.56
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0055 (SE = 0.0091)
+    ## tau (square root of estimated tau^2 value):             0.0741
+    ## I^2 (residual heterogeneity / unaccounted variability): 26.98%
+    ## H^2 (unaccounted variability / sampling variability):   1.37
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.0020, p-val < .0001
+    ## QE(df = 10) = 12.6455, p-val = 0.2442
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.4957, p-val = 0.4814
+    ## QM(df = 1) = 0.0585, p-val = 0.8090
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2084  0.0483   4.3141  <.0001   0.1137  0.3031  *** 
-    ## TSTR      -0.1436  0.2040  -0.7041  0.4814  -0.5434  0.2562      
+    ## intrcpt    0.1054  0.0459   2.2963  0.0217   0.0154  0.1954  * 
+    ## TSTR      -0.0406  0.1681  -0.2418  0.8090  -0.3701  0.2888    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4389,25 +4356,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ CONT)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0166 (SE = 0.0116)
-    ## tau (square root of estimated tau^2 value):             0.1288
-    ## I^2 (residual heterogeneity / unaccounted variability): 65.93%
-    ## H^2 (unaccounted variability / sampling variability):   2.94
-    ## R^2 (amount of heterogeneity accounted for):            7.61%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0038 (SE = 0.0079)
+    ## tau (square root of estimated tau^2 value):             0.0617
+    ## I^2 (residual heterogeneity / unaccounted variability): 20.05%
+    ## H^2 (unaccounted variability / sampling variability):   1.25
+    ## R^2 (amount of heterogeneity accounted for):            4.96%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 49.6796, p-val < .0001
+    ## QE(df = 10) = 11.7523, p-val = 0.3020
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.0467, p-val = 0.3063
+    ## QM(df = 1) = 0.3814, p-val = 0.5368
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1769  0.0509  3.4781  0.0005   0.0772  0.2766  *** 
-    ## CONTALT    0.1139  0.1113  1.0231  0.3063  -0.1043  0.3321      
+    ## intrcpt    0.0863  0.0442  1.9526  0.0509  -0.0003  0.1729  . 
+    ## CONTALT    0.0767  0.1242  0.6176  0.5368  -0.1668  0.3202    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4417,25 +4384,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Duration)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0183 (SE = 0.0119)
-    ## tau (square root of estimated tau^2 value):             0.1354
-    ## I^2 (residual heterogeneity / unaccounted variability): 71.89%
-    ## H^2 (unaccounted variability / sampling variability):   3.56
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0036 (SE = 0.0074)
+    ## tau (square root of estimated tau^2 value):             0.0601
+    ## I^2 (residual heterogeneity / unaccounted variability): 20.89%
+    ## H^2 (unaccounted variability / sampling variability):   1.26
+    ## R^2 (amount of heterogeneity accounted for):            9.63%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 63.7444, p-val < .0001
+    ## QE(df = 10) = 11.5842, p-val = 0.3138
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.9566, p-val = 0.3280
+    ## QM(df = 1) = 0.9019, p-val = 0.3423
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.3983  0.2077   1.9179  0.0551  -0.0087  0.8053  . 
-    ## Duration   -0.2084  0.2131  -0.9781  0.3280  -0.6261  0.2093    
+    ## intrcpt     0.5157  0.4447   1.1595  0.2463  -0.3560  1.3874    
+    ## Duration   -0.4242  0.4466  -0.9497  0.3423  -1.2996  0.4512    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4445,25 +4412,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Hours)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0171 (SE = 0.0115)
-    ## tau (square root of estimated tau^2 value):             0.1307
-    ## I^2 (residual heterogeneity / unaccounted variability): 68.98%
-    ## H^2 (unaccounted variability / sampling variability):   3.22
-    ## R^2 (amount of heterogeneity accounted for):            4.81%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0007 (SE = 0.0050)
+    ## tau (square root of estimated tau^2 value):             0.0271
+    ## I^2 (residual heterogeneity / unaccounted variability): 4.76%
+    ## H^2 (unaccounted variability / sampling variability):   1.05
+    ## R^2 (amount of heterogeneity accounted for):            81.65%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 55.6335, p-val < .0001
+    ## QE(df = 10) = 9.1196, p-val = 0.5208
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.6317, p-val = 0.4267
+    ## QM(df = 1) = 3.1496, p-val = 0.0759
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1080  0.1251  0.8629  0.3882  -0.1373  0.3532    
-    ## Hours      0.0026  0.0033  0.7948  0.4267  -0.0038  0.0091    
+    ##          estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt   -0.0915  0.0986  -0.9273  0.3538  -0.2848  0.1019    
+    ## Hours      0.0050  0.0028   1.7747  0.0759  -0.0005  0.0105  . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4473,25 +4440,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0193 (SE = 0.0125)
-    ## tau (square root of estimated tau^2 value):             0.1389
-    ## I^2 (residual heterogeneity / unaccounted variability): 72.70%
-    ## H^2 (unaccounted variability / sampling variability):   3.66
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0050 (SE = 0.0087)
+    ## tau (square root of estimated tau^2 value):             0.0707
+    ## I^2 (residual heterogeneity / unaccounted variability): 25.20%
+    ## H^2 (unaccounted variability / sampling variability):   1.34
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 64.9379, p-val < .0001
+    ## QE(df = 10) = 12.5297, p-val = 0.2512
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0304, p-val = 0.8616
+    ## QM(df = 1) = 0.0115, p-val = 0.9145
     ## 
     ## Model Results:
     ## 
     ##            estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.1974  0.0503  3.9270  <.0001   0.0989  0.2959  *** 
-    ## designQED    0.0267  0.1530  0.1743  0.8616  -0.2732  0.3266      
+    ## intrcpt      0.0993  0.0453  2.1928  0.0283   0.0105  0.1881  * 
+    ## designQED    0.0169  0.1574  0.1074  0.9145  -0.2916  0.3254    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4501,25 +4468,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grade)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0177 (SE = 0.0119)
-    ## tau (square root of estimated tau^2 value):             0.1330
-    ## I^2 (residual heterogeneity / unaccounted variability): 70.37%
-    ## H^2 (unaccounted variability / sampling variability):   3.38
-    ## R^2 (amount of heterogeneity accounted for):            1.54%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0058 (SE = 0.0099)
+    ## tau (square root of estimated tau^2 value):             0.0760
+    ## I^2 (residual heterogeneity / unaccounted variability): 25.42%
+    ## H^2 (unaccounted variability / sampling variability):   1.34
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 62.4938, p-val < .0001
+    ## QE(df = 10) = 12.3632, p-val = 0.2615
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.8266, p-val = 0.3633
+    ## QM(df = 1) = 0.0006, p-val = 0.9800
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.1143  0.1054  1.0838  0.2784  -0.0924  0.3209    
-    ## gradeK-2    0.1066  0.1173  0.9092  0.3633  -0.1232  0.3365    
+    ##           estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt     0.1050  0.0838   1.2532  0.2101  -0.0592  0.2693    
+    ## gradeK-2   -0.0025  0.0990  -0.0251  0.9800  -0.1965  0.1915    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4529,25 +4496,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grouping)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0198 (SE = 0.0130)
-    ## tau (square root of estimated tau^2 value):             0.1406
-    ## I^2 (residual heterogeneity / unaccounted variability): 70.15%
-    ## H^2 (unaccounted variability / sampling variability):   3.35
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0065 (SE = 0.0105)
+    ## tau (square root of estimated tau^2 value):             0.0807
+    ## I^2 (residual heterogeneity / unaccounted variability): 27.51%
+    ## H^2 (unaccounted variability / sampling variability):   1.38
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 58.9697, p-val < .0001
+    ## QE(df = 10) = 12.6438, p-val = 0.2443
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0006, p-val = 0.9811
+    ## QM(df = 1) = 0.3335, p-val = 0.5636
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.2017  0.0784   2.5732  0.0101   0.0481  0.3553  * 
-    ## grouping   -0.0023  0.0990  -0.0236  0.9811  -0.1963  0.1916    
+    ##           estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt     0.0675  0.0799  0.8443  0.3985  -0.0892  0.2242    
+    ## grouping    0.0562  0.0974  0.5775  0.5636  -0.1346  0.2471    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4559,26 +4526,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Content + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0046 (SE = 0.0056)
-    ## tau (square root of estimated tau^2 value):             0.0680
-    ## I^2 (residual heterogeneity / unaccounted variability): 33.74%
-    ## H^2 (unaccounted variability / sampling variability):   1.51
-    ## R^2 (amount of heterogeneity accounted for):            74.22%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0062)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 18.3866, p-val = 0.1434
+    ## QE(df = 9) = 7.4826, p-val = 0.5870
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 14.6246, p-val = 0.0007
+    ## QM(df = 2) = 5.1632, p-val = 0.0757
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0697  0.0579   1.2051  0.2282  -0.0437  0.1832      
-    ## Content   -0.1199  0.1054  -1.1377  0.2552  -0.3264  0.0866      
-    ## typeLR     0.2284  0.0683   3.3438  0.0008   0.0945  0.3623  *** 
+    ## intrcpt    0.0361  0.0339   1.0656  0.2866  -0.0303  0.1025    
+    ## Content   -0.0646  0.0928  -0.6965  0.4861  -0.2464  0.1172    
+    ## typeLR     0.1619  0.0724   2.2371  0.0253   0.0200  0.3037  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4588,26 +4555,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ PD + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0046 (SE = 0.0054)
-    ## tau (square root of estimated tau^2 value):             0.0682
-    ## I^2 (residual heterogeneity / unaccounted variability): 34.99%
-    ## H^2 (unaccounted variability / sampling variability):   1.54
-    ## R^2 (amount of heterogeneity accounted for):            74.13%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0000 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0.0025
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.04%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            99.84%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 19.4022, p-val = 0.1112
+    ## QE(df = 9) = 7.4875, p-val = 0.5865
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 13.6945, p-val = 0.0011
+    ## QM(df = 2) = 5.1515, p-val = 0.0761
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0407  0.0551  0.7396  0.4596  -0.0672  0.1487      
-    ## PD         0.2012  0.3195  0.6296  0.5290  -0.4251  0.8274      
-    ## typeLR     0.2501  0.0676  3.6989  0.0002   0.1176  0.3826  *** 
+    ## intrcpt    0.0278  0.0331  0.8406  0.4006  -0.0370  0.0926    
+    ## PD         0.2141  0.3091  0.6928  0.4884  -0.3916  0.8199    
+    ## typeLR     0.1575  0.0718  2.1929  0.0283   0.0167  0.2982  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4617,26 +4584,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMULT + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0029 (SE = 0.0044)
-    ## tau (square root of estimated tau^2 value):             0.0540
-    ## I^2 (residual heterogeneity / unaccounted variability): 24.32%
-    ## H^2 (unaccounted variability / sampling variability):   1.32
-    ## R^2 (amount of heterogeneity accounted for):            83.74%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 15.0904, p-val = 0.3017
+    ## QE(df = 9) = 7.7324, p-val = 0.5613
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 21.6297, p-val < .0001
+    ## QM(df = 2) = 4.9133, p-val = 0.0857
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0424  0.0487   0.8704  0.3841  -0.0530  0.1378      
-    ## TMULT     -0.1615  0.0831  -1.9434  0.0520  -0.3244  0.0014    . 
-    ## typeLR     0.2929  0.0634   4.6210  <.0001   0.1687  0.4171  *** 
+    ## intrcpt    0.0302  0.0328   0.9204  0.3574  -0.0341  0.0945    
+    ## TMULT     -0.0919  0.1894  -0.4850  0.6277  -0.4631  0.2794    
+    ## typeLR     0.2350  0.1797   1.3078  0.1909  -0.1172  0.5872    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4646,25 +4613,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TVOC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0046 (SE = 0.0054)
-    ## tau (square root of estimated tau^2 value):             0.0680
-    ## I^2 (residual heterogeneity / unaccounted variability): 33.49%
-    ## H^2 (unaccounted variability / sampling variability):   1.50
-    ## R^2 (amount of heterogeneity accounted for):            74.22%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0053)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 14) = 19.8823, p-val = 0.1339
+    ## QE(df = 10) = 7.9677, p-val = 0.6320
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 13.3295, p-val = 0.0003
+    ## QM(df = 1) = 4.6781, p-val = 0.0306
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0467  0.0542  0.8610  0.3892  -0.0596  0.1529      
-    ## typeLR     0.2442  0.0669  3.6510  0.0003   0.1131  0.3753  *** 
+    ## intrcpt    0.0302  0.0328  0.9204  0.3574  -0.0341  0.0945    
+    ## typeLR     0.1551  0.0717  2.1629  0.0306   0.0145  0.2956  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4674,26 +4641,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSYN + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0038 (SE = 0.0050)
-    ## tau (square root of estimated tau^2 value):             0.0620
-    ## I^2 (residual heterogeneity / unaccounted variability): 29.94%
-    ## H^2 (unaccounted variability / sampling variability):   1.43
-    ## R^2 (amount of heterogeneity accounted for):            78.59%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 17.7631, p-val = 0.1667
+    ## QE(df = 9) = 7.7696, p-val = 0.5575
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 16.4698, p-val = 0.0003
+    ## QM(df = 2) = 4.8761, p-val = 0.0873
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0448  0.0518   0.8651  0.3870  -0.0568  0.1464      
-    ## TSYN      -0.1106  0.0936  -1.1808  0.2377  -0.2941  0.0730      
-    ## typeLR     0.2708  0.0667   4.0581  <.0001   0.1400  0.4016  *** 
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0302  0.0328  0.9204  0.3574  -0.0341  0.0945    
+    ## TSYN       0.0605  0.1359  0.4450  0.6563  -0.2059  0.3268    
+    ## typeLR     0.1144  0.1162  0.9843  0.3250  -0.1134  0.3421    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4703,26 +4670,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TMOR + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0029 (SE = 0.0044)
-    ## tau (square root of estimated tau^2 value):             0.0540
-    ## I^2 (residual heterogeneity / unaccounted variability): 24.32%
-    ## H^2 (unaccounted variability / sampling variability):   1.32
-    ## R^2 (amount of heterogeneity accounted for):            83.74%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 15.0904, p-val = 0.3017
+    ## QE(df = 9) = 7.7324, p-val = 0.5613
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 21.6297, p-val < .0001
+    ## QM(df = 2) = 4.9133, p-val = 0.0857
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0424  0.0487   0.8704  0.3841  -0.0530  0.1378      
-    ## TMOR      -0.1615  0.0831  -1.9434  0.0520  -0.3244  0.0014    . 
-    ## typeLR     0.2929  0.0634   4.6210  <.0001   0.1687  0.4171  *** 
+    ## intrcpt    0.0302  0.0328   0.9204  0.3574  -0.0341  0.0945    
+    ## TMOR      -0.0919  0.1894  -0.4850  0.6277  -0.4631  0.2794    
+    ## typeLR     0.2350  0.1797   1.3078  0.1909  -0.1172  0.5872    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4732,26 +4699,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TLC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0051 (SE = 0.0060)
-    ## tau (square root of estimated tau^2 value):             0.0716
-    ## I^2 (residual heterogeneity / unaccounted variability): 35.00%
-    ## H^2 (unaccounted variability / sampling variability):   1.54
-    ## R^2 (amount of heterogeneity accounted for):            71.45%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0103)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 18.5671, p-val = 0.1371
+    ## QE(df = 9) = 7.5217, p-val = 0.5830
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 13.6449, p-val = 0.0011
+    ## QM(df = 2) = 5.1240, p-val = 0.0771
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0874  0.0662   1.3215  0.1863  -0.0422  0.2171     
-    ## TLC       -0.0751  0.0679  -1.1066  0.2685  -0.2081  0.0579     
-    ## typeLR     0.2265  0.0699   3.2396  0.0012   0.0895  0.3636  ** 
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0176  0.0378  0.4657  0.6414  -0.0565  0.0918    
+    ## TLC        0.0507  0.0760  0.6678  0.5043  -0.0982  0.1997    
+    ## typeLR     0.1169  0.0917  1.2751  0.2023  -0.0628  0.2966    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4761,26 +4728,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TRC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0059 (SE = 0.0066)
-    ## tau (square root of estimated tau^2 value):             0.0768
-    ## I^2 (residual heterogeneity / unaccounted variability): 37.83%
-    ## H^2 (unaccounted variability / sampling variability):   1.61
-    ## R^2 (amount of heterogeneity accounted for):            67.19%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0088)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 19.8376, p-val = 0.0993
+    ## QE(df = 9) = 7.9230, p-val = 0.5419
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 11.2412, p-val = 0.0036
+    ## QM(df = 2) = 4.7228, p-val = 0.0943
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0497  0.0739   0.6728  0.5011  -0.0951  0.1945     
-    ## TRC       -0.0012  0.1179  -0.0102  0.9919  -0.2324  0.2300     
-    ## typeLR     0.2377  0.0848   2.8035  0.0051   0.0715  0.4038  ** 
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0269  0.0363  0.7415  0.4584  -0.0442  0.0981    
+    ## TRC        0.0179  0.0849  0.2114  0.8326  -0.1484  0.1843    
+    ## typeLR     0.1584  0.0734  2.1586  0.0309   0.0146  0.3021  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4790,26 +4757,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TCOM + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0051 (SE = 0.0060)
-    ## tau (square root of estimated tau^2 value):             0.0716
-    ## I^2 (residual heterogeneity / unaccounted variability): 35.00%
-    ## H^2 (unaccounted variability / sampling variability):   1.54
-    ## R^2 (amount of heterogeneity accounted for):            71.45%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0103)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 18.5671, p-val = 0.1371
+    ## QE(df = 9) = 7.5217, p-val = 0.5830
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 13.6449, p-val = 0.0011
+    ## QM(df = 2) = 5.1240, p-val = 0.0771
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0874  0.0662   1.3215  0.1863  -0.0422  0.2171     
-    ## TCOM      -0.0751  0.0679  -1.1066  0.2685  -0.2081  0.0579     
-    ## typeLR     0.2265  0.0699   3.2396  0.0012   0.0895  0.3636  ** 
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.0176  0.0378  0.4657  0.6414  -0.0565  0.0918    
+    ## TCOM       0.0507  0.0760  0.6678  0.5043  -0.0982  0.1997    
+    ## typeLR     0.1169  0.0917  1.2751  0.2023  -0.0628  0.2966    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4819,26 +4786,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TPAD + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0046 (SE = 0.0054)
-    ## tau (square root of estimated tau^2 value):             0.0682
-    ## I^2 (residual heterogeneity / unaccounted variability): 34.99%
-    ## H^2 (unaccounted variability / sampling variability):   1.54
-    ## R^2 (amount of heterogeneity accounted for):            74.13%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0000 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0.0025
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.04%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            99.84%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 19.4022, p-val = 0.1112
+    ## QE(df = 9) = 7.4875, p-val = 0.5865
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 13.6945, p-val = 0.0011
+    ## QM(df = 2) = 5.1515, p-val = 0.0761
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0407  0.0551  0.7396  0.4596  -0.0672  0.1487      
-    ## TPAD       0.2012  0.3195  0.6296  0.5290  -0.4251  0.8274      
-    ## typeLR     0.2501  0.0676  3.6989  0.0002   0.1176  0.3826  *** 
+    ## intrcpt    0.0278  0.0331  0.8406  0.4006  -0.0370  0.0926    
+    ## TPAD       0.2141  0.3091  0.6928  0.4884  -0.3916  0.8199    
+    ## typeLR     0.1575  0.0718  2.1929  0.0283   0.0167  0.2982  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4848,26 +4815,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ LowIncome + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 15; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0039 (SE = 0.0062)
-    ## tau (square root of estimated tau^2 value):             0.0623
-    ## I^2 (residual heterogeneity / unaccounted variability): 24.81%
-    ## H^2 (unaccounted variability / sampling variability):   1.33
-    ## R^2 (amount of heterogeneity accounted for):            72.64%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0075)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 12) = 14.5250, p-val = 0.2684
+    ## QE(df = 9) = 7.9009, p-val = 0.5442
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 10.8627, p-val = 0.0044
+    ## QM(df = 2) = 4.7448, p-val = 0.0933
     ## 
     ## Model Results:
     ## 
-    ##            estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.0102  0.0715  0.1422  0.8869  -0.1299  0.1502     
-    ## LowIncome    0.0518  0.0730  0.7085  0.4787  -0.0914  0.1949     
-    ## typeLR       0.2127  0.0674  3.1566  0.0016   0.0806  0.3447  ** 
+    ##            estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt      0.0459  0.0690   0.6647  0.5062  -0.0894  0.1811    
+    ## LowIncome   -0.0189  0.0733  -0.2583  0.7962  -0.1626  0.1247    
+    ## typeLR       0.1456  0.0806   1.8070  0.0708  -0.0123  0.3035  . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4877,26 +4844,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ EL + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0040 (SE = 0.0050)
-    ## tau (square root of estimated tau^2 value):             0.0630
-    ## I^2 (residual heterogeneity / unaccounted variability): 30.99%
-    ## H^2 (unaccounted variability / sampling variability):   1.45
-    ## R^2 (amount of heterogeneity accounted for):            77.92%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 18.2364, p-val = 0.1487
+    ## QE(df = 9) = 7.7061, p-val = 0.5640
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 15.8796, p-val = 0.0004
+    ## QM(df = 2) = 4.9396, p-val = 0.0846
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0493  0.0524   0.9419  0.3463  -0.0533  0.1520      
-    ## EL        -0.1510  0.1441  -1.0479  0.2947  -0.4335  0.1314      
-    ## typeLR     0.2524  0.0646   3.9068  <.0001   0.1258  0.3791  *** 
+    ## intrcpt    0.0310  0.0328   0.9445  0.3449  -0.0334  0.0954    
+    ## EL        -0.0728  0.1423  -0.5114  0.6091  -0.3517  0.2062    
+    ## typeLR     0.1686  0.0764   2.2064  0.0274   0.0188  0.3183  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4906,26 +4873,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TDD + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0035 (SE = 0.0048)
-    ## tau (square root of estimated tau^2 value):             0.0595
-    ## I^2 (residual heterogeneity / unaccounted variability): 28.51%
-    ## H^2 (unaccounted variability / sampling variability):   1.40
-    ## R^2 (amount of heterogeneity accounted for):            80.29%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 16.8312, p-val = 0.2071
+    ## QE(df = 9) = 7.0923, p-val = 0.6275
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 18.2013, p-val = 0.0001
+    ## QM(df = 2) = 5.5534, p-val = 0.0622
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0441  0.0508   0.8668  0.3861  -0.0556  0.1437      
-    ## TDD       -0.2433  0.1601  -1.5200  0.1285  -0.5571  0.0704      
-    ## typeLR     0.2640  0.0634   4.1616  <.0001   0.1397  0.3884  *** 
+    ## intrcpt    0.0302  0.0328   0.9204  0.3574  -0.0341  0.0945    
+    ## TDD       -0.1500  0.1603  -0.9356  0.3495  -0.4643  0.1642    
+    ## typeLR     0.1846  0.0783   2.3565  0.0184   0.0311  0.3381  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4935,26 +4902,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TTEC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0029 (SE = 0.0044)
-    ## tau (square root of estimated tau^2 value):             0.0540
-    ## I^2 (residual heterogeneity / unaccounted variability): 24.32%
-    ## H^2 (unaccounted variability / sampling variability):   1.32
-    ## R^2 (amount of heterogeneity accounted for):            83.74%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 15.0904, p-val = 0.3017
+    ## QE(df = 9) = 7.7324, p-val = 0.5613
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 21.6297, p-val < .0001
+    ## QM(df = 2) = 4.9133, p-val = 0.0857
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0424  0.0487   0.8704  0.3841  -0.0530  0.1378      
-    ## TTEC      -0.1615  0.0831  -1.9434  0.0520  -0.3244  0.0014    . 
-    ## typeLR     0.2929  0.0634   4.6210  <.0001   0.1687  0.4171  *** 
+    ## intrcpt    0.0302  0.0328   0.9204  0.3574  -0.0341  0.0945    
+    ## TTEC      -0.0919  0.1894  -0.4850  0.6277  -0.4631  0.2794    
+    ## typeLR     0.2350  0.1797   1.3078  0.1909  -0.1172  0.5872    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4964,26 +4931,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSTR + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0035 (SE = 0.0048)
-    ## tau (square root of estimated tau^2 value):             0.0595
-    ## I^2 (residual heterogeneity / unaccounted variability): 28.51%
-    ## H^2 (unaccounted variability / sampling variability):   1.40
-    ## R^2 (amount of heterogeneity accounted for):            80.29%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 16.8312, p-val = 0.2071
+    ## QE(df = 9) = 7.0923, p-val = 0.6275
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 18.2013, p-val = 0.0001
+    ## QM(df = 2) = 5.5534, p-val = 0.0622
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0441  0.0508   0.8668  0.3861  -0.0556  0.1437      
-    ## TSTR      -0.2433  0.1601  -1.5200  0.1285  -0.5571  0.0704      
-    ## typeLR     0.2640  0.0634   4.1616  <.0001   0.1397  0.3884  *** 
+    ## intrcpt    0.0302  0.0328   0.9204  0.3574  -0.0341  0.0945    
+    ## TSTR      -0.1500  0.1603  -0.9356  0.3495  -0.4643  0.1642    
+    ## typeLR     0.1846  0.0783   2.3565  0.0184   0.0311  0.3381  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -4993,26 +4960,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ CONT + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0027 (SE = 0.0048)
-    ## tau (square root of estimated tau^2 value):             0.0523
-    ## I^2 (residual heterogeneity / unaccounted variability): 20.30%
-    ## H^2 (unaccounted variability / sampling variability):   1.25
-    ## R^2 (amount of heterogeneity accounted for):            84.76%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0058)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 15.4269, p-val = 0.2815
+    ## QE(df = 9) = 7.4610, p-val = 0.5892
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 21.0235, p-val < .0001
+    ## QM(df = 2) = 5.1847, p-val = 0.0748
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0296  0.0486  0.6088  0.5426  -0.0657  0.1249      
-    ## CONTALT    0.1108  0.0702  1.5778  0.1146  -0.0268  0.2483      
-    ## typeLR     0.2383  0.0604  3.9451  <.0001   0.1199  0.3566  *** 
+    ## intrcpt    0.0255  0.0335  0.7606  0.4469  -0.0402  0.0911    
+    ## CONTALT    0.0797  0.1120  0.7118  0.4766  -0.1397  0.2991    
+    ## typeLR     0.1494  0.0721  2.0715  0.0383   0.0080  0.2908  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5022,26 +4989,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Duration + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0052 (SE = 0.0058)
-    ## tau (square root of estimated tau^2 value):             0.0721
-    ## I^2 (residual heterogeneity / unaccounted variability): 37.38%
-    ## H^2 (unaccounted variability / sampling variability):   1.60
-    ## R^2 (amount of heterogeneity accounted for):            71.07%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 19.3689, p-val = 0.1121
+    ## QE(df = 9) = 6.7471, p-val = 0.6634
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 12.9482, p-val = 0.0015
+    ## QM(df = 2) = 5.8986, p-val = 0.0524
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.1963  0.1930   1.0169  0.3092  -0.1820  0.5746      
-    ## Duration   -0.1508  0.1877  -0.8032  0.4219  -0.5187  0.2171      
-    ## typeLR      0.2377  0.0690   3.4475  0.0006   0.1026  0.3729  *** 
+    ## intrcpt     0.5157  0.4407   1.1702  0.2419  -0.3480  1.3794    
+    ## Duration   -0.4882  0.4419  -1.1048  0.2693  -1.3543  0.3779    
+    ## typeLR      0.1578  0.0717   2.1993  0.0279   0.0172  0.2984  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5051,26 +5018,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Hours + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0047 (SE = 0.0057)
-    ## tau (square root of estimated tau^2 value):             0.0687
-    ## I^2 (residual heterogeneity / unaccounted variability): 33.39%
-    ## H^2 (unaccounted variability / sampling variability):   1.50
-    ## R^2 (amount of heterogeneity accounted for):            73.72%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0000 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0.0024
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.04%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            99.85%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 18.8952, p-val = 0.1264
+    ## QE(df = 9) = 7.0770, p-val = 0.6291
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 13.4450, p-val = 0.0012
+    ## QM(df = 2) = 5.5624, p-val = 0.0620
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0007  0.1015  0.0071  0.9944  -0.1983  0.1997      
-    ## Hours      0.0015  0.0028  0.5386  0.5902  -0.0040  0.0071      
-    ## typeLR     0.2340  0.0696  3.3641  0.0008   0.0977  0.3704  *** 
+    ##          estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt   -0.0584  0.0995  -0.5871  0.5572  -0.2536  0.1367    
+    ## Hours      0.0030  0.0031   0.9437  0.3453  -0.0032  0.0091    
+    ## typeLR     0.1173  0.0821   1.4283  0.1532  -0.0437  0.2783    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5080,26 +5047,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0044 (SE = 0.0053)
-    ## tau (square root of estimated tau^2 value):             0.0661
-    ## I^2 (residual heterogeneity / unaccounted variability): 33.05%
-    ## H^2 (unaccounted variability / sampling variability):   1.49
-    ## R^2 (amount of heterogeneity accounted for):            75.68%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0054)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 19.0842, p-val = 0.1205
+    ## QE(df = 9) = 7.7150, p-val = 0.5631
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 14.2261, p-val = 0.0008
+    ## QM(df = 2) = 4.9307, p-val = 0.0850
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.0472  0.0535   0.8822  0.3777  -0.0576  0.1520      
-    ## designQED   -0.0754  0.1254  -0.6013  0.5477  -0.3213  0.1704      
-    ## typeLR       0.2518  0.0668   3.7717  0.0002   0.1210  0.3827  *** 
+    ## intrcpt      0.0306  0.0328   0.9329  0.3509  -0.0337  0.0949    
+    ## designQED   -0.0758  0.1507  -0.5027  0.6152  -0.3712  0.2196    
+    ## typeLR       0.1696  0.0773   2.1943  0.0282   0.0181  0.3210  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5109,26 +5076,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grade + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0056 (SE = 0.0063)
-    ## tau (square root of estimated tau^2 value):             0.0751
-    ## I^2 (residual heterogeneity / unaccounted variability): 37.39%
-    ## H^2 (unaccounted variability / sampling variability):   1.60
-    ## R^2 (amount of heterogeneity accounted for):            68.59%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0078)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 19.8643, p-val = 0.0986
+    ## QE(df = 9) = 7.6755, p-val = 0.5672
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 11.6026, p-val = 0.0030
+    ## QM(df = 2) = 4.9702, p-val = 0.0833
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.0490  0.0854   0.5735  0.5663  -0.1184  0.2164     
-    ## gradeK-2   -0.0003  0.0989  -0.0035  0.9972  -0.1941  0.1934     
-    ## typeLR      0.2394  0.0762   3.1399  0.0017   0.0900  0.3888  ** 
+    ## intrcpt     0.0649  0.0721   0.9000  0.3681  -0.0765  0.2063    
+    ## gradeK-2   -0.0419  0.0775  -0.5405  0.5888  -0.1939  0.1101    
+    ## typeLR      0.1552  0.0717   2.1651  0.0304   0.0147  0.2958  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5138,26 +5105,26 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grouping + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 16; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 12; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0045 (SE = 0.0059)
-    ## tau (square root of estimated tau^2 value):             0.0672
-    ## I^2 (residual heterogeneity / unaccounted variability): 30.01%
-    ## H^2 (unaccounted variability / sampling variability):   1.43
-    ## R^2 (amount of heterogeneity accounted for):            74.88%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0080)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 13) = 17.6595, p-val = 0.1709
+    ## QE(df = 9) = 7.9637, p-val = 0.5378
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 14.1917, p-val = 0.0008
+    ## QM(df = 2) = 4.6820, p-val = 0.0962
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.0790  0.0678   1.1647  0.2441  -0.0539  0.2120      
-    ## grouping   -0.0529  0.0669  -0.7905  0.4292  -0.1841  0.0783      
-    ## typeLR      0.2486  0.0666   3.7301  0.0002   0.1180  0.3792  *** 
+    ##           estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt     0.0264  0.0687  0.3846  0.7005  -0.1082  0.1610    
+    ## grouping    0.0047  0.0743  0.0627  0.9500  -0.1410  0.1504    
+    ## typeLR      0.1551  0.0717  2.1633  0.0305   0.0146  0.2956  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5169,25 +5136,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0063 (SE = 0.0077)
-    ## tau (square root of estimated tau^2 value):             0.0797
-    ## I^2 (residual heterogeneity / unaccounted variability): 46.11%
-    ## H^2 (unaccounted variability / sampling variability):   1.86
-    ## R^2 (amount of heterogeneity accounted for):            23.52%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0047 (SE = 0.0213)
+    ## tau (square root of estimated tau^2 value):             0.0689
+    ## I^2 (residual heterogeneity / unaccounted variability): 15.77%
+    ## H^2 (unaccounted variability / sampling variability):   1.19
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 14.3608, p-val = 0.0728
+    ## QE(df = 4) = 4.6219, p-val = 0.3283
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.9465, p-val = 0.1630
+    ## QM(df = 1) = 0.7196, p-val = 0.3963
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3020  0.0439   6.8876  <.0001   0.2161  0.3880  *** 
-    ## Content   -0.2373  0.1701  -1.3952  0.1630  -0.5706  0.0960      
+    ## intrcpt    0.2151  0.0776   2.7729  0.0056   0.0631  0.3672  ** 
+    ## Content   -0.1504  0.1772  -0.8483  0.3963  -0.4978  0.1970     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5197,20 +5164,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0083 (SE = 0.0088)
-    ## tau (square root of estimated tau^2 value):      0.0911
-    ## I^2 (total heterogeneity / total variability):   51.18%
-    ## H^2 (total variability / sampling variability):  2.05
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 9) = 17.4119, p-val = 0.0426
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.2822  0.0455  6.2020  <.0001  0.1930  0.3713  *** 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5220,25 +5187,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0050 (SE = 0.0069)
-    ## tau (square root of estimated tau^2 value):             0.0708
-    ## I^2 (residual heterogeneity / unaccounted variability): 39.56%
-    ## H^2 (unaccounted variability / sampling variability):   1.65
-    ## R^2 (amount of heterogeneity accounted for):            39.59%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0071 (SE = 0.0215)
+    ## tau (square root of estimated tau^2 value):             0.0840
+    ## I^2 (residual heterogeneity / unaccounted variability): 23.17%
+    ## H^2 (unaccounted variability / sampling variability):   1.30
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 12.6200, p-val = 0.1256
+    ## QE(df = 4) = 5.2620, p-val = 0.2615
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.2778, p-val = 0.0702
+    ## QM(df = 1) = 0.1864, p-val = 0.6659
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3349  0.0471   7.1103  <.0001   0.2426  0.4273  *** 
-    ## TMULT     -0.1609  0.0889  -1.8105  0.0702  -0.3351  0.0133    . 
+    ## intrcpt    0.2652  0.1956   1.3556  0.1752  -0.1182  0.6486    
+    ## TMULT     -0.0909  0.2106  -0.4318  0.6659  -0.5037  0.3219    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5248,20 +5215,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0083 (SE = 0.0088)
-    ## tau (square root of estimated tau^2 value):      0.0911
-    ## I^2 (total heterogeneity / total variability):   51.18%
-    ## H^2 (total variability / sampling variability):  2.05
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 9) = 17.4119, p-val = 0.0426
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.2822  0.0455  6.2020  <.0001  0.1930  0.3713  *** 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5271,25 +5238,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0073 (SE = 0.0085)
-    ## tau (square root of estimated tau^2 value):             0.0852
-    ## I^2 (residual heterogeneity / unaccounted variability): 49.01%
-    ## H^2 (unaccounted variability / sampling variability):   1.96
-    ## R^2 (amount of heterogeneity accounted for):            12.45%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0080 (SE = 0.0231)
+    ## tau (square root of estimated tau^2 value):             0.0896
+    ## I^2 (residual heterogeneity / unaccounted variability): 24.60%
+    ## H^2 (unaccounted variability / sampling variability):   1.33
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 15.2928, p-val = 0.0537
+    ## QE(df = 4) = 5.2992, p-val = 0.2579
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.0548, p-val = 0.3044
+    ## QM(df = 1) = 0.1260, p-val = 0.7226
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3099  0.0505   6.1341  <.0001   0.2109  0.4089  *** 
-    ## TSYN      -0.1048  0.1020  -1.0270  0.3044  -0.3048  0.0952      
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.1494  0.1287  1.1607  0.2458  -0.1029  0.4017    
+    ## TSYN       0.0557  0.1569  0.3550  0.7226  -0.2518  0.3632    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5299,25 +5266,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0050 (SE = 0.0069)
-    ## tau (square root of estimated tau^2 value):             0.0708
-    ## I^2 (residual heterogeneity / unaccounted variability): 39.56%
-    ## H^2 (unaccounted variability / sampling variability):   1.65
-    ## R^2 (amount of heterogeneity accounted for):            39.59%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0071 (SE = 0.0215)
+    ## tau (square root of estimated tau^2 value):             0.0840
+    ## I^2 (residual heterogeneity / unaccounted variability): 23.17%
+    ## H^2 (unaccounted variability / sampling variability):   1.30
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 12.6200, p-val = 0.1256
+    ## QE(df = 4) = 5.2620, p-val = 0.2615
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.2778, p-val = 0.0702
+    ## QM(df = 1) = 0.1864, p-val = 0.6659
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3349  0.0471   7.1103  <.0001   0.2426  0.4273  *** 
-    ## TMOR      -0.1609  0.0889  -1.8105  0.0702  -0.3351  0.0133    . 
+    ## intrcpt    0.2652  0.1956   1.3556  0.1752  -0.1182  0.6486    
+    ## TMOR      -0.0909  0.2106  -0.4318  0.6659  -0.5037  0.3219    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5327,25 +5294,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0052 (SE = 0.0070)
-    ## tau (square root of estimated tau^2 value):             0.0718
-    ## I^2 (residual heterogeneity / unaccounted variability): 40.06%
-    ## H^2 (unaccounted variability / sampling variability):   1.67
-    ## R^2 (amount of heterogeneity accounted for):            37.85%
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
-    ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 12.6940, p-val = 0.1228
-    ## 
-    ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.1935, p-val = 0.0739
+    ## Test for Heterogeneity:
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3395  0.0491   6.9207  <.0001   0.2434  0.4357  *** 
-    ## TLC       -0.1531  0.0857  -1.7870  0.0739  -0.3211  0.0148    . 
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5355,20 +5317,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0083 (SE = 0.0088)
-    ## tau (square root of estimated tau^2 value):      0.0911
-    ## I^2 (total heterogeneity / total variability):   51.18%
-    ## H^2 (total variability / sampling variability):  2.05
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 9) = 17.4119, p-val = 0.0426
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.2822  0.0455  6.2020  <.0001  0.1930  0.3713  *** 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5378,25 +5340,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0052 (SE = 0.0070)
-    ## tau (square root of estimated tau^2 value):             0.0718
-    ## I^2 (residual heterogeneity / unaccounted variability): 40.06%
-    ## H^2 (unaccounted variability / sampling variability):   1.67
-    ## R^2 (amount of heterogeneity accounted for):            37.85%
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
-    ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 12.6940, p-val = 0.1228
-    ## 
-    ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.1935, p-val = 0.0739
+    ## Test for Heterogeneity:
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3395  0.0491   6.9207  <.0001   0.2434  0.4357  *** 
-    ## TCOM      -0.1531  0.0857  -1.7870  0.0739  -0.3211  0.0148    . 
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5406,20 +5363,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.0083 (SE = 0.0088)
-    ## tau (square root of estimated tau^2 value):      0.0911
-    ## I^2 (total heterogeneity / total variability):   51.18%
-    ## H^2 (total variability / sampling variability):  2.05
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 9) = 17.4119, p-val = 0.0426
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.2822  0.0455  6.2020  <.0001  0.1930  0.3713  *** 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5429,25 +5386,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 9; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0070 (SE = 0.0104)
-    ## tau (square root of estimated tau^2 value):             0.0837
-    ## I^2 (residual heterogeneity / unaccounted variability): 40.35%
-    ## H^2 (unaccounted variability / sampling variability):   1.68
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0080 (SE = 0.0231)
+    ## tau (square root of estimated tau^2 value):             0.0896
+    ## I^2 (residual heterogeneity / unaccounted variability): 24.60%
+    ## H^2 (unaccounted variability / sampling variability):   1.33
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 7) = 11.5439, p-val = 0.1166
+    ## QE(df = 4) = 5.2992, p-val = 0.2579
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.4518, p-val = 0.5015
+    ## QM(df = 1) = 0.1260, p-val = 0.7226
     ## 
     ## Model Results:
     ## 
-    ##            estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.2051  0.0883  2.3229  0.0202   0.0320  0.3781  * 
-    ## LowIncome    0.0710  0.1057  0.6721  0.5015  -0.1361  0.2782    
+    ##            estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt      0.2051  0.0897   2.2859  0.0223   0.0292  0.3809  * 
+    ## LowIncome   -0.0557  0.1569  -0.3550  0.7226  -0.3632  0.2518    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5457,25 +5414,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0063 (SE = 0.0077)
-    ## tau (square root of estimated tau^2 value):             0.0797
-    ## I^2 (residual heterogeneity / unaccounted variability): 46.11%
-    ## H^2 (unaccounted variability / sampling variability):   1.86
-    ## R^2 (amount of heterogeneity accounted for):            23.52%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0047 (SE = 0.0213)
+    ## tau (square root of estimated tau^2 value):             0.0689
+    ## I^2 (residual heterogeneity / unaccounted variability): 15.77%
+    ## H^2 (unaccounted variability / sampling variability):   1.19
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 14.3608, p-val = 0.0728
+    ## QE(df = 4) = 4.6219, p-val = 0.3283
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.9465, p-val = 0.1630
+    ## QM(df = 1) = 0.7196, p-val = 0.3963
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3020  0.0439   6.8876  <.0001   0.2161  0.3880  *** 
-    ## EL        -0.2373  0.1701  -1.3952  0.1630  -0.5706  0.0960      
+    ## intrcpt    0.2151  0.0776   2.7729  0.0056   0.0631  0.3672  ** 
+    ## EL        -0.1504  0.1772  -0.8483  0.3963  -0.4978  0.1970     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5485,25 +5442,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0063 (SE = 0.0077)
-    ## tau (square root of estimated tau^2 value):             0.0797
-    ## I^2 (residual heterogeneity / unaccounted variability): 46.11%
-    ## H^2 (unaccounted variability / sampling variability):   1.86
-    ## R^2 (amount of heterogeneity accounted for):            23.52%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0047 (SE = 0.0213)
+    ## tau (square root of estimated tau^2 value):             0.0689
+    ## I^2 (residual heterogeneity / unaccounted variability): 15.77%
+    ## H^2 (unaccounted variability / sampling variability):   1.19
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 14.3608, p-val = 0.0728
+    ## QE(df = 4) = 4.6219, p-val = 0.3283
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.9465, p-val = 0.1630
+    ## QM(df = 1) = 0.7196, p-val = 0.3963
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3020  0.0439   6.8876  <.0001   0.2161  0.3880  *** 
-    ## TDD       -0.2373  0.1701  -1.3952  0.1630  -0.5706  0.0960      
+    ## intrcpt    0.2151  0.0776   2.7729  0.0056   0.0631  0.3672  ** 
+    ## TDD       -0.1504  0.1772  -0.8483  0.3963  -0.4978  0.1970     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5513,25 +5470,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0050 (SE = 0.0069)
-    ## tau (square root of estimated tau^2 value):             0.0708
-    ## I^2 (residual heterogeneity / unaccounted variability): 39.56%
-    ## H^2 (unaccounted variability / sampling variability):   1.65
-    ## R^2 (amount of heterogeneity accounted for):            39.59%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0071 (SE = 0.0215)
+    ## tau (square root of estimated tau^2 value):             0.0840
+    ## I^2 (residual heterogeneity / unaccounted variability): 23.17%
+    ## H^2 (unaccounted variability / sampling variability):   1.30
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 12.6200, p-val = 0.1256
+    ## QE(df = 4) = 5.2620, p-val = 0.2615
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.2778, p-val = 0.0702
+    ## QM(df = 1) = 0.1864, p-val = 0.6659
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3349  0.0471   7.1103  <.0001   0.2426  0.4273  *** 
-    ## TTEC      -0.1609  0.0889  -1.8105  0.0702  -0.3351  0.0133    . 
+    ## intrcpt    0.2652  0.1956   1.3556  0.1752  -0.1182  0.6486    
+    ## TTEC      -0.0909  0.2106  -0.4318  0.6659  -0.5037  0.3219    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5541,25 +5498,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0063 (SE = 0.0077)
-    ## tau (square root of estimated tau^2 value):             0.0797
-    ## I^2 (residual heterogeneity / unaccounted variability): 46.11%
-    ## H^2 (unaccounted variability / sampling variability):   1.86
-    ## R^2 (amount of heterogeneity accounted for):            23.52%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0047 (SE = 0.0213)
+    ## tau (square root of estimated tau^2 value):             0.0689
+    ## I^2 (residual heterogeneity / unaccounted variability): 15.77%
+    ## H^2 (unaccounted variability / sampling variability):   1.19
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 14.3608, p-val = 0.0728
+    ## QE(df = 4) = 4.6219, p-val = 0.3283
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.9465, p-val = 0.1630
+    ## QM(df = 1) = 0.7196, p-val = 0.3963
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3020  0.0439   6.8876  <.0001   0.2161  0.3880  *** 
-    ## TSTR      -0.2373  0.1701  -1.3952  0.1630  -0.5706  0.0960      
+    ## intrcpt    0.2151  0.0776   2.7729  0.0056   0.0631  0.3672  ** 
+    ## TSTR      -0.1504  0.1772  -0.8483  0.3963  -0.4978  0.1970     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5569,25 +5526,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0068 (SE = 0.0093)
-    ## tau (square root of estimated tau^2 value):             0.0825
-    ## I^2 (residual heterogeneity / unaccounted variability): 40.02%
-    ## H^2 (unaccounted variability / sampling variability):   1.67
-    ## R^2 (amount of heterogeneity accounted for):            18.05%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0071 (SE = 0.0215)
+    ## tau (square root of estimated tau^2 value):             0.0840
+    ## I^2 (residual heterogeneity / unaccounted variability): 23.17%
+    ## H^2 (unaccounted variability / sampling variability):   1.30
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 13.1415, p-val = 0.1071
+    ## QE(df = 4) = 5.2620, p-val = 0.2615
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.5535, p-val = 0.2126
+    ## QM(df = 1) = 0.1864, p-val = 0.6659
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2543  0.0497  5.1128  <.0001   0.1568  0.3518  *** 
-    ## CONTALT    0.1245  0.0999  1.2464  0.2126  -0.0713  0.3202      
+    ## intrcpt    0.1742  0.0780  2.2326  0.0256   0.0213  0.3272  * 
+    ## CONTALT    0.0909  0.2106  0.4318  0.6659  -0.3219  0.5037    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5597,25 +5554,20 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0095 (SE = 0.0098)
-    ## tau (square root of estimated tau^2 value):             0.0977
-    ## I^2 (residual heterogeneity / unaccounted variability): 56.82%
-    ## H^2 (unaccounted variability / sampling variability):   2.32
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of total heterogeneity): 0.0029 (SE = 0.0172)
+    ## tau (square root of estimated tau^2 value):      0.0536
+    ## I^2 (total heterogeneity / total variability):   10.50%
+    ## H^2 (total variability / sampling variability):  1.12
     ## 
-    ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 17.3201, p-val = 0.0269
-    ## 
-    ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1814, p-val = 0.6702
+    ## Test for Heterogeneity:
+    ## Q(df = 5) = 5.4973, p-val = 0.3582
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.3684  0.2129   1.7305  0.0835  -0.0489  0.7856  . 
-    ## Duration   -0.0930  0.2183  -0.4259  0.6702  -0.5209  0.3350    
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.1860  0.0674  2.7571  0.0058  0.0538  0.3181  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5625,25 +5577,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0103 (SE = 0.0108)
-    ## tau (square root of estimated tau^2 value):             0.1013
-    ## I^2 (residual heterogeneity / unaccounted variability): 54.17%
-    ## H^2 (unaccounted variability / sampling variability):   2.18
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0062 (SE = 0.0222)
+    ## tau (square root of estimated tau^2 value):             0.0785
+    ## I^2 (residual heterogeneity / unaccounted variability): 19.58%
+    ## H^2 (unaccounted variability / sampling variability):   1.24
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 16.7883, p-val = 0.0324
+    ## QE(df = 4) = 4.8931, p-val = 0.2984
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0028, p-val = 0.9575
+    ## QM(df = 1) = 0.4596, p-val = 0.4978
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2699  0.1753  1.5398  0.1236  -0.0736  0.6134    
-    ## Hours      0.0002  0.0045  0.0533  0.9575  -0.0087  0.0092    
+    ## intrcpt    0.0101  0.2700  0.0374  0.9702  -0.5190  0.5392    
+    ## Hours      0.0041  0.0061  0.6779  0.4978  -0.0078  0.0161    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5653,25 +5605,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0076 (SE = 0.0086)
-    ## tau (square root of estimated tau^2 value):             0.0874
-    ## I^2 (residual heterogeneity / unaccounted variability): 50.75%
-    ## H^2 (unaccounted variability / sampling variability):   2.03
-    ## R^2 (amount of heterogeneity accounted for):            7.99%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0047 (SE = 0.0213)
+    ## tau (square root of estimated tau^2 value):             0.0689
+    ## I^2 (residual heterogeneity / unaccounted variability): 15.77%
+    ## H^2 (unaccounted variability / sampling variability):   1.19
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 15.9279, p-val = 0.0434
+    ## QE(df = 4) = 4.6219, p-val = 0.3283
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.6454, p-val = 0.4217
+    ## QM(df = 1) = 0.7196, p-val = 0.3963
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.2964  0.0473   6.2660  <.0001   0.2037  0.3890  *** 
-    ## designQED   -0.1118  0.1391  -0.8034  0.4217  -0.3845  0.1609      
+    ## intrcpt      0.2151  0.0776   2.7729  0.0056   0.0631  0.3672  ** 
+    ## designQED   -0.1504  0.1772  -0.8483  0.3963  -0.4978  0.1970     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5681,25 +5633,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0099 (SE = 0.0102)
-    ## tau (square root of estimated tau^2 value):             0.0997
-    ## I^2 (residual heterogeneity / unaccounted variability): 57.47%
-    ## H^2 (unaccounted variability / sampling variability):   2.35
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0012 (SE = 0.0181)
+    ## tau (square root of estimated tau^2 value):             0.0340
+    ## I^2 (residual heterogeneity / unaccounted variability): 4.49%
+    ## H^2 (unaccounted variability / sampling variability):   1.05
+    ## R^2 (amount of heterogeneity accounted for):            59.78%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 17.3551, p-val = 0.0266
+    ## QE(df = 4) = 4.1814, p-val = 0.3820
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1486, p-val = 0.6999
+    ## QM(df = 1) = 1.2517, p-val = 0.2632
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.3482  0.1849   1.8833  0.0597  -0.0142  0.7106  . 
-    ## gradeK-2   -0.0738  0.1914  -0.3854  0.6999  -0.4489  0.3014    
+    ## intrcpt     0.3482  0.1593   2.1852  0.0289   0.0359  0.6605  * 
+    ## gradeK-2   -0.1954  0.1747  -1.1188  0.2632  -0.5377  0.1469    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -5709,25 +5661,25 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 10; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 6; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0096 (SE = 0.0111)
-    ## tau (square root of estimated tau^2 value):             0.0979
-    ## I^2 (residual heterogeneity / unaccounted variability): 49.03%
-    ## H^2 (unaccounted variability / sampling variability):   1.96
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0047 (SE = 0.0213)
+    ## tau (square root of estimated tau^2 value):             0.0689
+    ## I^2 (residual heterogeneity / unaccounted variability): 15.77%
+    ## H^2 (unaccounted variability / sampling variability):   1.19
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 8) = 15.1233, p-val = 0.0568
+    ## QE(df = 4) = 4.6219, p-val = 0.3283
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.2942, p-val = 0.5875
+    ## QM(df = 1) = 0.7196, p-val = 0.3963
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.3184  0.0853   3.7345  0.0002   0.1513  0.4855  *** 
-    ## grouping   -0.0556  0.1025  -0.5424  0.5875  -0.2565  0.1453      
+    ##           estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt     0.0648  0.1594  0.4065  0.6844  -0.2476  0.3771    
+    ## grouping    0.1504  0.1772  0.8483  0.3963  -0.1970  0.4978    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6294,25 +6246,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0573 (SE = 0.0243)
-    ## tau (square root of estimated tau^2 value):             0.2393
-    ## I^2 (residual heterogeneity / unaccounted variability): 87.07%
-    ## H^2 (unaccounted variability / sampling variability):   7.73
-    ## R^2 (amount of heterogeneity accounted for):            25.59%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0468 (SE = 0.0225)
+    ## tau (square root of estimated tau^2 value):             0.2164
+    ## I^2 (residual heterogeneity / unaccounted variability): 83.06%
+    ## H^2 (unaccounted variability / sampling variability):   5.90
+    ## R^2 (amount of heterogeneity accounted for):            49.36%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 90.6527, p-val < .0001
+    ## QE(df = 18) = 67.1025, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 5.9040, p-val = 0.0151
+    ## QM(df = 1) = 11.3894, p-val = 0.0007
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0969  0.0693  1.3989  0.1619  -0.0389  0.2328    
-    ## typeRR     0.3344  0.1376  2.4298  0.0151   0.0647  0.6042  * 
+    ## intrcpt    0.0947  0.0642  1.4747  0.1403  -0.0312  0.2206      
+    ## typeRR     0.5572  0.1651  3.3748  0.0007   0.2336  0.8809  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6322,25 +6274,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Content)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0746 (SE = 0.0302)
-    ## tau (square root of estimated tau^2 value):             0.2732
-    ## I^2 (residual heterogeneity / unaccounted variability): 89.73%
-    ## H^2 (unaccounted variability / sampling variability):   9.73
-    ## R^2 (amount of heterogeneity accounted for):            3.06%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0891 (SE = 0.0378)
+    ## tau (square root of estimated tau^2 value):             0.2985
+    ## I^2 (residual heterogeneity / unaccounted variability): 89.46%
+    ## H^2 (unaccounted variability / sampling variability):   9.49
+    ## R^2 (amount of heterogeneity accounted for):            3.64%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 102.2102, p-val < .0001
+    ## QE(df = 18) = 101.0264, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.6837, p-val = 0.1944
+    ## QM(df = 1) = 1.6522, p-val = 0.1987
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2548  0.0855   2.9802  0.0029   0.0872  0.4223  ** 
-    ## Content   -0.1766  0.1361  -1.2976  0.1944  -0.4434  0.0902     
+    ## intrcpt    0.2748  0.1014   2.7093  0.0067   0.0760  0.4736  ** 
+    ## Content   -0.1965  0.1529  -1.2854  0.1987  -0.4961  0.1031     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6350,25 +6302,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ PD)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0817 (SE = 0.0321)
-    ## tau (square root of estimated tau^2 value):             0.2859
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.57%
-    ## H^2 (unaccounted variability / sampling variability):   11.86
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0986 (SE = 0.0406)
+    ## tau (square root of estimated tau^2 value):             0.3140
+    ## I^2 (residual heterogeneity / unaccounted variability): 91.38%
+    ## H^2 (unaccounted variability / sampling variability):   11.60
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 104.1852, p-val < .0001
+    ## QE(df = 18) = 102.0842, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0354, p-val = 0.8509
+    ## QM(df = 1) = 0.0362, p-val = 0.8492
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1897  0.0716   2.6510  0.0080   0.0494  0.3299  ** 
-    ## PD        -0.0511  0.2716  -0.1880  0.8509  -0.5835  0.4813     
+    ## intrcpt    0.1939  0.0825   2.3505  0.0187   0.0322  0.3555  * 
+    ## PD        -0.0551  0.2899  -0.1901  0.8492  -0.6232  0.5130    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6378,25 +6330,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMULT)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0819 (SE = 0.0325)
-    ## tau (square root of estimated tau^2 value):             0.2861
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.23%
-    ## H^2 (unaccounted variability / sampling variability):   11.41
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0976 (SE = 0.0407)
+    ## tau (square root of estimated tau^2 value):             0.3123
+    ## I^2 (residual heterogeneity / unaccounted variability): 90.74%
+    ## H^2 (unaccounted variability / sampling variability):   10.80
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 103.7726, p-val < .0001
+    ## QE(df = 18) = 101.9004, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.9031, p-val = 0.3420
+    ## QM(df = 1) = 0.8963, p-val = 0.3438
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1417  0.0834  1.6986  0.0894  -0.0218  0.3052  . 
-    ## TMULT      0.1414  0.1488  0.9503  0.3420  -0.1502  0.4330    
+    ## intrcpt    0.1340  0.0980  1.3664  0.1718  -0.0582  0.3261    
+    ## TMULT      0.1558  0.1645  0.9467  0.3438  -0.1667  0.4782    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6406,25 +6358,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TVOC)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0804 (SE = 0.0315)
-    ## tau (square root of estimated tau^2 value):             0.2836
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.48%
-    ## H^2 (unaccounted variability / sampling variability):   11.74
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0971 (SE = 0.0398)
+    ## tau (square root of estimated tau^2 value):             0.3116
+    ## I^2 (residual heterogeneity / unaccounted variability): 91.31%
+    ## H^2 (unaccounted variability / sampling variability):   11.51
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 104.1563, p-val < .0001
+    ## QE(df = 18) = 102.0713, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0578, p-val = 0.8100
+    ## QM(df = 1) = 0.0561, p-val = 0.8128
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1160  0.2990  0.3880  0.6980  -0.4701  0.7021    
-    ## TVOC       0.0739  0.3072  0.2404  0.8100  -0.5283  0.6760    
+    ## intrcpt    0.1176  0.3127  0.3759  0.7070  -0.4953  0.7304    
+    ## TVOC       0.0765  0.3231  0.2369  0.8128  -0.5567  0.7097    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6434,25 +6386,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSYN)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0655 (SE = 0.0269)
-    ## tau (square root of estimated tau^2 value):             0.2559
-    ## I^2 (residual heterogeneity / unaccounted variability): 89.56%
-    ## H^2 (unaccounted variability / sampling variability):   9.58
-    ## R^2 (amount of heterogeneity accounted for):            14.92%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0780 (SE = 0.0337)
+    ## tau (square root of estimated tau^2 value):             0.2793
+    ## I^2 (residual heterogeneity / unaccounted variability): 89.14%
+    ## H^2 (unaccounted variability / sampling variability):   9.21
+    ## R^2 (amount of heterogeneity accounted for):            15.63%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 96.0390, p-val < .0001
+    ## QE(df = 18) = 92.9203, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 4.8075, p-val = 0.0283
+    ## QM(df = 1) = 4.5138, p-val = 0.0336
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1126  0.0709  1.5873  0.1124  -0.0264  0.2516    
-    ## TSYN       0.3411  0.1556  2.1926  0.0283   0.0362  0.6460  * 
+    ## intrcpt    0.1011  0.0824  1.2270  0.2198  -0.0604  0.2627    
+    ## TSYN       0.3587  0.1688  2.1246  0.0336   0.0278  0.6896  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6462,25 +6414,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMOR)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0819 (SE = 0.0325)
-    ## tau (square root of estimated tau^2 value):             0.2862
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.25%
-    ## H^2 (unaccounted variability / sampling variability):   11.42
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0979 (SE = 0.0408)
+    ## tau (square root of estimated tau^2 value):             0.3129
+    ## I^2 (residual heterogeneity / unaccounted variability): 90.78%
+    ## H^2 (unaccounted variability / sampling variability):   10.84
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 103.7372, p-val < .0001
+    ## QE(df = 18) = 101.8809, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.6461, p-val = 0.4215
+    ## QM(df = 1) = 0.6419, p-val = 0.4230
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1439  0.0869  1.6558  0.0978  -0.0264  0.3141  . 
-    ## TMOR       0.1152  0.1433  0.8038  0.4215  -0.1657  0.3961    
+    ## intrcpt    0.1357  0.1034  1.3126  0.1893  -0.0669  0.3384    
+    ## TMOR       0.1281  0.1599  0.8012  0.4230  -0.1852  0.4414    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6490,25 +6442,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TLC)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0744 (SE = 0.0300)
-    ## tau (square root of estimated tau^2 value):             0.2729
-    ## I^2 (residual heterogeneity / unaccounted variability): 90.60%
-    ## H^2 (unaccounted variability / sampling variability):   10.64
-    ## R^2 (amount of heterogeneity accounted for):            3.30%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0892 (SE = 0.0377)
+    ## tau (square root of estimated tau^2 value):             0.2987
+    ## I^2 (residual heterogeneity / unaccounted variability): 90.20%
+    ## H^2 (unaccounted variability / sampling variability):   10.20
+    ## R^2 (amount of heterogeneity accounted for):            3.52%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 99.8923, p-val < .0001
+    ## QE(df = 18) = 98.4077, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.0927, p-val = 0.1480
+    ## QM(df = 1) = 2.0292, p-val = 0.1543
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2468  0.0790   3.1250  0.0018   0.0920  0.4016  ** 
-    ## TLC       -0.2114  0.1462  -1.4466  0.1480  -0.4979  0.0750     
+    ## intrcpt    0.2647  0.0929   2.8478  0.0044   0.0825  0.4468  ** 
+    ## TLC       -0.2295  0.1611  -1.4245  0.1543  -0.5453  0.0863     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6518,25 +6470,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TRC)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0709 (SE = 0.0289)
-    ## tau (square root of estimated tau^2 value):             0.2662
-    ## I^2 (residual heterogeneity / unaccounted variability): 89.53%
-    ## H^2 (unaccounted variability / sampling variability):   9.55
-    ## R^2 (amount of heterogeneity accounted for):            7.94%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0815 (SE = 0.0351)
+    ## tau (square root of estimated tau^2 value):             0.2855
+    ## I^2 (residual heterogeneity / unaccounted variability): 88.67%
+    ## H^2 (unaccounted variability / sampling variability):   8.82
+    ## R^2 (amount of heterogeneity accounted for):            11.85%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 100.7271, p-val < .0001
+    ## QE(df = 18) = 93.0488, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 2.5185, p-val = 0.1125
+    ## QM(df = 1) = 2.8435, p-val = 0.0917
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2668  0.0833   3.2038  0.0014   0.1036  0.4300  ** 
-    ## TRC       -0.2122  0.1337  -1.5870  0.1125  -0.4742  0.0499     
+    ## intrcpt    0.2823  0.0924   3.0550  0.0023   0.1012  0.4634  ** 
+    ## TRC       -0.2554  0.1514  -1.6863  0.0917  -0.5522  0.0414   . 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6546,25 +6498,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TCOM)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0680 (SE = 0.0279)
-    ## tau (square root of estimated tau^2 value):             0.2608
-    ## I^2 (residual heterogeneity / unaccounted variability): 89.14%
-    ## H^2 (unaccounted variability / sampling variability):   9.21
-    ## R^2 (amount of heterogeneity accounted for):            11.63%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0769 (SE = 0.0335)
+    ## tau (square root of estimated tau^2 value):             0.2774
+    ## I^2 (residual heterogeneity / unaccounted variability): 88.07%
+    ## H^2 (unaccounted variability / sampling variability):   8.38
+    ## R^2 (amount of heterogeneity accounted for):            16.81%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 100.1516, p-val < .0001
+    ## QE(df = 18) = 92.2445, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.8950, p-val = 0.0484
+    ## QM(df = 1) = 4.4106, p-val = 0.0357
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb    ci.ub 
-    ## intrcpt    0.2991  0.0866   3.4515  0.0006   0.1292   0.4689  *** 
-    ## TCOM      -0.2541  0.1288  -1.9736  0.0484  -0.5065  -0.0018    * 
+    ## intrcpt    0.3218  0.0963   3.3424  0.0008   0.1331   0.5105  *** 
+    ## TCOM      -0.3021  0.1439  -2.1001  0.0357  -0.5841  -0.0202    * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6574,25 +6526,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TPAD)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0819 (SE = 0.0323)
-    ## tau (square root of estimated tau^2 value):             0.2863
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.57%
-    ## H^2 (unaccounted variability / sampling variability):   11.87
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0989 (SE = 0.0408)
+    ## tau (square root of estimated tau^2 value):             0.3145
+    ## I^2 (residual heterogeneity / unaccounted variability): 91.38%
+    ## H^2 (unaccounted variability / sampling variability):   11.60
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 103.9449, p-val < .0001
+    ## QE(df = 18) = 101.7734, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0032, p-val = 0.9547
+    ## QM(df = 1) = 0.0015, p-val = 0.9695
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1851  0.0718  2.5794  0.0099   0.0444  0.3257  ** 
-    ## TPAD       0.0151  0.2666  0.0568  0.9547  -0.5073  0.5376     
+    ## intrcpt    0.1885  0.0827  2.2790  0.0227   0.0264  0.3507  * 
+    ## TPAD       0.0109  0.2854  0.0382  0.9695  -0.5484  0.5702    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6602,25 +6554,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ LowIncome)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 19; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 17; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0935 (SE = 0.0388)
-    ## tau (square root of estimated tau^2 value):             0.3057
-    ## I^2 (residual heterogeneity / unaccounted variability): 92.65%
-    ## H^2 (unaccounted variability / sampling variability):   13.61
+    ## tau^2 (estimated amount of residual heterogeneity):     0.1131 (SE = 0.0497)
+    ## tau (square root of estimated tau^2 value):             0.3364
+    ## I^2 (residual heterogeneity / unaccounted variability): 92.38%
+    ## H^2 (unaccounted variability / sampling variability):   13.12
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 17) = 102.3460, p-val < .0001
+    ## QE(df = 15) = 100.6308, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.1758, p-val = 0.2782
+    ## QM(df = 1) = 1.1445, p-val = 0.2847
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.3149  0.1271   2.4767  0.0133   0.0657  0.5640  * 
-    ## LowIncome   -0.1742  0.1606  -1.0843  0.2782  -0.4890  0.1406    
+    ## intrcpt      0.3425  0.1508   2.2714  0.0231   0.0470  0.6380  * 
+    ## LowIncome   -0.2011  0.1879  -1.0698  0.2847  -0.5694  0.1673    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6630,25 +6582,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ EL)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0801 (SE = 0.0320)
-    ## tau (square root of estimated tau^2 value):             0.2830
-    ## I^2 (residual heterogeneity / unaccounted variability): 90.62%
-    ## H^2 (unaccounted variability / sampling variability):   10.66
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0960 (SE = 0.0401)
+    ## tau (square root of estimated tau^2 value):             0.3098
+    ## I^2 (residual heterogeneity / unaccounted variability): 90.22%
+    ## H^2 (unaccounted variability / sampling variability):   10.23
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 103.6310, p-val < .0001
+    ## QE(df = 18) = 102.0868, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.1293, p-val = 0.2879
+    ## QM(df = 1) = 1.0775, p-val = 0.2993
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1314  0.0856  1.5354  0.1247  -0.0363  0.2991    
-    ## EL         0.1516  0.1427  1.0627  0.2879  -0.1280  0.4312    
+    ## intrcpt    0.1303  0.0966  1.3496  0.1771  -0.0589  0.3196    
+    ## EL         0.1709  0.1646  1.0380  0.2993  -0.1518  0.4936    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6658,25 +6610,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TDD)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0839 (SE = 0.0333)
-    ## tau (square root of estimated tau^2 value):             0.2896
-    ## I^2 (residual heterogeneity / unaccounted variability): 90.70%
-    ## H^2 (unaccounted variability / sampling variability):   10.75
+    ## tau^2 (estimated amount of residual heterogeneity):     0.1009 (SE = 0.0420)
+    ## tau (square root of estimated tau^2 value):             0.3176
+    ## I^2 (residual heterogeneity / unaccounted variability): 90.46%
+    ## H^2 (unaccounted variability / sampling variability):   10.48
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 102.8544, p-val < .0001
+    ## QE(df = 18) = 98.2325, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0197, p-val = 0.8885
+    ## QM(df = 1) = 0.0333, p-val = 0.8553
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1934  0.0858   2.2541  0.0242   0.0252  0.3616  * 
-    ## TDD       -0.0207  0.1474  -0.1402  0.8885  -0.3095  0.2682    
+    ## intrcpt    0.2010  0.1012   1.9861  0.0470   0.0026  0.3994  * 
+    ## TDD       -0.0300  0.1646  -0.1823  0.8553  -0.3527  0.2926    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6686,25 +6638,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TTEC)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0661 (SE = 0.0272)
-    ## tau (square root of estimated tau^2 value):             0.2571
-    ## I^2 (residual heterogeneity / unaccounted variability): 89.44%
-    ## H^2 (unaccounted variability / sampling variability):   9.47
-    ## R^2 (amount of heterogeneity accounted for):            14.16%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0781 (SE = 0.0338)
+    ## tau (square root of estimated tau^2 value):             0.2794
+    ## I^2 (residual heterogeneity / unaccounted variability): 88.81%
+    ## H^2 (unaccounted variability / sampling variability):   8.93
+    ## R^2 (amount of heterogeneity accounted for):            15.58%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 97.5538, p-val < .0001
+    ## QE(df = 18) = 93.8813, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 4.5181, p-val = 0.0335
+    ## QM(df = 1) = 4.3488, p-val = 0.0370
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0916  0.0767  1.1943  0.2324  -0.0587  0.2420    
-    ## TTEC       0.2891  0.1360  2.1256  0.0335   0.0225  0.5557  * 
+    ## intrcpt    0.0740  0.0900  0.8219  0.4111  -0.1024  0.2504    
+    ## TTEC       0.3125  0.1499  2.0854  0.0370   0.0188  0.6062  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6714,25 +6666,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSTR)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0770 (SE = 0.0310)
-    ## tau (square root of estimated tau^2 value):             0.2775
-    ## I^2 (residual heterogeneity / unaccounted variability): 90.71%
-    ## H^2 (unaccounted variability / sampling variability):   10.77
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0932 (SE = 0.0392)
+    ## tau (square root of estimated tau^2 value):             0.3052
+    ## I^2 (residual heterogeneity / unaccounted variability): 90.34%
+    ## H^2 (unaccounted variability / sampling variability):   10.35
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 96.9812, p-val < .0001
+    ## QE(df = 18) = 95.6324, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.0650, p-val = 0.3021
+    ## QM(df = 1) = 0.9613, p-val = 0.3269
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2195  0.0750   2.9260  0.0034   0.0725  0.3666  ** 
-    ## TSTR      -0.1760  0.1706  -1.0320  0.3021  -0.5103  0.1583     
+    ## intrcpt    0.2287  0.0873   2.6189  0.0088   0.0575  0.3998  ** 
+    ## TSTR      -0.1838  0.1875  -0.9805  0.3269  -0.5513  0.1836     
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6742,25 +6694,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ CONT)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0421 (SE = 0.0187)
-    ## tau (square root of estimated tau^2 value):             0.2052
-    ## I^2 (residual heterogeneity / unaccounted variability): 84.80%
-    ## H^2 (unaccounted variability / sampling variability):   6.58
-    ## R^2 (amount of heterogeneity accounted for):            45.31%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0509 (SE = 0.0237)
+    ## tau (square root of estimated tau^2 value):             0.2256
+    ## I^2 (residual heterogeneity / unaccounted variability): 84.48%
+    ## H^2 (unaccounted variability / sampling variability):   6.44
+    ## R^2 (amount of heterogeneity accounted for):            44.97%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 78.7120, p-val < .0001
+    ## QE(df = 18) = 75.4928, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 13.3207, p-val = 0.0003
+    ## QM(df = 1) = 12.3023, p-val = 0.0005
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se    zval    pval   ci.lb   ci.ub 
-    ## intrcpt    0.1114  0.0562  1.9833  0.0473  0.0013  0.2216    * 
-    ## CONTALT    0.6392  0.1751  3.6498  0.0003  0.2959  0.9824  *** 
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.1006  0.0651  1.5441  0.1226  -0.0271  0.2282      
+    ## CONTALT    0.6534  0.1863  3.5075  0.0005   0.2883  1.0186  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6770,25 +6722,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Duration)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0818 (SE = 0.0325)
-    ## tau (square root of estimated tau^2 value):             0.2860
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.30%
-    ## H^2 (unaccounted variability / sampling variability):   11.50
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0990 (SE = 0.0412)
+    ## tau (square root of estimated tau^2 value):             0.3147
+    ## I^2 (residual heterogeneity / unaccounted variability): 91.00%
+    ## H^2 (unaccounted variability / sampling variability):   11.11
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 102.0995, p-val < .0001
+    ## QE(df = 18) = 99.3515, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0389, p-val = 0.8437
+    ## QM(df = 1) = 0.0174, p-val = 0.8951
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.2109  0.1433   1.4723  0.1410  -0.0699  0.4917    
-    ## Duration   -0.0322  0.1635  -0.1971  0.8437  -0.3527  0.2882    
+    ## intrcpt     0.2068  0.1537   1.3455  0.1785  -0.0945  0.5082    
+    ## Duration   -0.0237  0.1794  -0.1319  0.8951  -0.3753  0.3279    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6798,25 +6750,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Hours)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 21; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 19; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0886 (SE = 0.0356)
-    ## tau (square root of estimated tau^2 value):             0.2977
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.36%
-    ## H^2 (unaccounted variability / sampling variability):   11.58
+    ## tau^2 (estimated amount of residual heterogeneity):     0.1072 (SE = 0.0452)
+    ## tau (square root of estimated tau^2 value):             0.3274
+    ## I^2 (residual heterogeneity / unaccounted variability): 91.06%
+    ## H^2 (unaccounted variability / sampling variability):   11.19
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 103.9920, p-val < .0001
+    ## QE(df = 17) = 101.4785, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0954, p-val = 0.7575
+    ## QM(df = 1) = 0.0868, p-val = 0.7683
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.2162  0.1133   1.9085  0.0563  -0.0058  0.4382  . 
-    ## Hours     -0.0008  0.0025  -0.3088  0.7575  -0.0057  0.0042    
+    ## intrcpt    0.2209  0.1261   1.7523  0.0797  -0.0262  0.4680  . 
+    ## Hours     -0.0008  0.0027  -0.2946  0.7683  -0.0062  0.0046    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6826,25 +6778,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ design)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0836 (SE = 0.0331)
-    ## tau (square root of estimated tau^2 value):             0.2891
-    ## I^2 (residual heterogeneity / unaccounted variability): 91.47%
-    ## H^2 (unaccounted variability / sampling variability):   11.72
+    ## tau^2 (estimated amount of residual heterogeneity):     0.1004 (SE = 0.0417)
+    ## tau (square root of estimated tau^2 value):             0.3169
+    ## I^2 (residual heterogeneity / unaccounted variability): 91.08%
+    ## H^2 (unaccounted variability / sampling variability):   11.22
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 104.1380, p-val < .0001
+    ## QE(df = 18) = 101.8975, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.1521, p-val = 0.6965
+    ## QM(df = 1) = 0.1734, p-val = 0.6772
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.2031  0.0818   2.4840  0.0130   0.0428  0.3633  * 
-    ## designQED   -0.0610  0.1563  -0.3900  0.6965  -0.3673  0.2454    
+    ## intrcpt      0.2117  0.0958   2.2109  0.0270   0.0240  0.3994  * 
+    ## designQED   -0.0719  0.1726  -0.4164  0.6772  -0.4102  0.2664    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6854,26 +6806,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grade)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0860 (SE = 0.0343)
-    ## tau (square root of estimated tau^2 value):             0.2933
-    ## I^2 (residual heterogeneity / unaccounted variability): 92.24%
-    ## H^2 (unaccounted variability / sampling variability):   12.88
+    ## tau^2 (estimated amount of residual heterogeneity):     0.1041 (SE = 0.0436)
+    ## tau (square root of estimated tau^2 value):             0.3227
+    ## I^2 (residual heterogeneity / unaccounted variability): 92.08%
+    ## H^2 (unaccounted variability / sampling variability):   12.63
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 103.5315, p-val < .0001
+    ## QE(df = 17) = 101.4600, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 0.5566, p-val = 0.7571
+    ## QM(df = 2) = 0.5412, p-val = 0.7629
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.2075  0.0786   2.6399  0.0083   0.0534  0.3615  ** 
-    ## gradeK-2    -0.1439  0.1968  -0.7312  0.4647  -0.5297  0.2419     
-    ## gradeBoth    0.0290  0.3514   0.0824  0.9343  -0.6598  0.7178     
+    ## intrcpt      0.2167  0.0921   2.3530  0.0186   0.0362  0.3971  * 
+    ## gradeK-2    -0.1532  0.2115  -0.7242  0.4689  -0.5678  0.2614    
+    ## gradeBoth    0.0198  0.3793   0.0521  0.9584  -0.7237  0.7632    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6883,25 +6835,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grouping)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0799 (SE = 0.0320)
-    ## tau (square root of estimated tau^2 value):             0.2827
-    ## I^2 (residual heterogeneity / unaccounted variability): 90.37%
-    ## H^2 (unaccounted variability / sampling variability):   10.39
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0946 (SE = 0.0398)
+    ## tau (square root of estimated tau^2 value):             0.3075
+    ## I^2 (residual heterogeneity / unaccounted variability): 89.96%
+    ## H^2 (unaccounted variability / sampling variability):   9.96
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 20) = 102.1744, p-val < .0001
+    ## QE(df = 18) = 94.6879, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.6798, p-val = 0.4097
+    ## QM(df = 1) = 0.7816, p-val = 0.3767
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.2239  0.0825   2.7146  0.0066   0.0622  0.3855  ** 
-    ## grouping   -0.1218  0.1477  -0.8245  0.4097  -0.4112  0.1677     
+    ## intrcpt     0.2256  0.0881   2.5607  0.0104   0.0529  0.3984  * 
+    ## grouping   -0.1654  0.1871  -0.8841  0.3767  -0.5322  0.2013    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6913,26 +6865,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Content + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0609 (SE = 0.0263)
-    ## tau (square root of estimated tau^2 value):             0.2467
-    ## I^2 (residual heterogeneity / unaccounted variability): 87.13%
-    ## H^2 (unaccounted variability / sampling variability):   7.77
-    ## R^2 (amount of heterogeneity accounted for):            20.96%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0462 (SE = 0.0231)
+    ## tau (square root of estimated tau^2 value):             0.2150
+    ## I^2 (residual heterogeneity / unaccounted variability): 81.70%
+    ## H^2 (unaccounted variability / sampling variability):   5.46
+    ## R^2 (amount of heterogeneity accounted for):            50.02%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.0675, p-val < .0001
+    ## QE(df = 17) = 67.0554, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 6.3735, p-val = 0.0413
+    ## QM(df = 2) = 13.2530, p-val = 0.0013
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1479  0.0931   1.5890  0.1121  -0.0345  0.3304    
-    ## Content   -0.1078  0.1291  -0.8348  0.4038  -0.3608  0.1452    
-    ## typeRR     0.3067  0.1454   2.1095  0.0349   0.0217  0.5917  * 
+    ## intrcpt    0.1696  0.0853   1.9885  0.0468   0.0024  0.3368   * 
+    ## Content   -0.1574  0.1185  -1.3286  0.1840  -0.3896  0.0748     
+    ## typeRR     0.5403  0.1648   3.2782  0.0010   0.2173  0.8634  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6942,26 +6894,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ PD + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0609 (SE = 0.0259)
-    ## tau (square root of estimated tau^2 value):             0.2469
-    ## I^2 (residual heterogeneity / unaccounted variability): 88.17%
-    ## H^2 (unaccounted variability / sampling variability):   8.46
-    ## R^2 (amount of heterogeneity accounted for):            20.84%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0506 (SE = 0.0242)
+    ## tau (square root of estimated tau^2 value):             0.2249
+    ## I^2 (residual heterogeneity / unaccounted variability): 84.68%
+    ## H^2 (unaccounted variability / sampling variability):   6.53
+    ## R^2 (amount of heterogeneity accounted for):            45.29%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.5871, p-val < .0001
+    ## QE(df = 17) = 67.0369, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 5.7022, p-val = 0.0578
+    ## QM(df = 2) = 10.8642, p-val = 0.0044
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0937  0.0743  1.2621  0.2069  -0.0518  0.2393    
-    ## PD         0.0447  0.2522  0.1771  0.8594  -0.4496  0.5389    
-    ## typeRR     0.3400  0.1429  2.3804  0.0173   0.0601  0.6200  * 
+    ## intrcpt    0.0917  0.0690  1.3288  0.1839  -0.0436  0.2270      
+    ## PD         0.0465  0.2399  0.1940  0.8462  -0.4236  0.5166      
+    ## typeRR     0.5622  0.1708  3.2906  0.0010   0.2273  0.8970  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -6971,26 +6923,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMULT + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0571 (SE = 0.0249)
-    ## tau (square root of estimated tau^2 value):             0.2389
-    ## I^2 (residual heterogeneity / unaccounted variability): 86.84%
-    ## H^2 (unaccounted variability / sampling variability):   7.60
-    ## R^2 (amount of heterogeneity accounted for):            25.88%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0498 (SE = 0.0244)
+    ## tau (square root of estimated tau^2 value):             0.2232
+    ## I^2 (residual heterogeneity / unaccounted variability): 83.53%
+    ## H^2 (unaccounted variability / sampling variability):   6.07
+    ## R^2 (amount of heterogeneity accounted for):            46.12%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.6371, p-val < .0001
+    ## QE(df = 17) = 67.0018, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 8.2110, p-val = 0.0165
+    ## QM(df = 2) = 12.4973, p-val = 0.0019
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0235  0.0845  0.2778  0.7812  -0.1421  0.1891     
-    ## TMULT      0.2004  0.1324  1.5140  0.1300  -0.0590  0.4598     
-    ## typeRR     0.3794  0.1406  2.6985  0.0070   0.1038  0.6550  ** 
+    ## intrcpt    0.0373  0.0805  0.4630  0.6434  -0.1206  0.1951      
+    ## TMULT      0.1591  0.1274  1.2491  0.2116  -0.0905  0.4087      
+    ## typeRR     0.5747  0.1693  3.3950  0.0007   0.2429  0.9065  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7000,26 +6952,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TVOC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0601 (SE = 0.0255)
-    ## tau (square root of estimated tau^2 value):             0.2451
-    ## I^2 (residual heterogeneity / unaccounted variability): 88.08%
-    ## H^2 (unaccounted variability / sampling variability):   8.39
-    ## R^2 (amount of heterogeneity accounted for):            21.95%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0496 (SE = 0.0237)
+    ## tau (square root of estimated tau^2 value):             0.2228
+    ## I^2 (residual heterogeneity / unaccounted variability): 84.53%
+    ## H^2 (unaccounted variability / sampling variability):   6.46
+    ## R^2 (amount of heterogeneity accounted for):            46.32%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.6520, p-val < .0001
+    ## QE(df = 17) = 67.1018, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 5.7274, p-val = 0.0571
+    ## QM(df = 2) = 10.9668, p-val = 0.0042
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1137  0.2813   0.4040  0.6862  -0.4378  0.6651    
-    ## TVOC      -0.0173  0.2906  -0.0596  0.9525  -0.5870  0.5523    
-    ## typeRR     0.3369  0.1415   2.3801  0.0173   0.0595  0.6143  * 
+    ## intrcpt    0.1122  0.2718   0.4129  0.6797  -0.4205  0.6450      
+    ## TVOC      -0.0179  0.2801  -0.0639  0.9491  -0.5669  0.5311      
+    ## typeRR     0.5591  0.1693   3.3017  0.0010   0.2272  0.8910  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7029,26 +6981,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSYN + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0415 (SE = 0.0192)
-    ## tau (square root of estimated tau^2 value):             0.2037
-    ## I^2 (residual heterogeneity / unaccounted variability): 83.30%
-    ## H^2 (unaccounted variability / sampling variability):   5.99
-    ## R^2 (amount of heterogeneity accounted for):            46.12%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0348 (SE = 0.0184)
+    ## tau (square root of estimated tau^2 value):             0.1865
+    ## I^2 (residual heterogeneity / unaccounted variability): 78.82%
+    ## H^2 (unaccounted variability / sampling variability):   4.72
+    ## R^2 (amount of heterogeneity accounted for):            62.38%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 80.3369, p-val < .0001
+    ## QE(df = 17) = 60.2779, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 14.4886, p-val = 0.0007
+    ## QM(df = 2) = 19.7038, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0138  0.0681  0.2028  0.8393  -0.1197  0.1473     
-    ## TSYN       0.3617  0.1339  2.7020  0.0069   0.0993  0.6241  ** 
-    ## typeRR     0.3572  0.1216  2.9382  0.0033   0.1189  0.5955  ** 
+    ## intrcpt    0.0235  0.0640  0.3675  0.7133  -0.1019  0.1489      
+    ## TSYN       0.3150  0.1285  2.4515  0.0142   0.0632  0.5669    * 
+    ## typeRR     0.5436  0.1495  3.6368  0.0003   0.2507  0.8366  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7058,26 +7010,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TMOR + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0569 (SE = 0.0248)
-    ## tau (square root of estimated tau^2 value):             0.2386
-    ## I^2 (residual heterogeneity / unaccounted variability): 86.81%
-    ## H^2 (unaccounted variability / sampling variability):   7.58
-    ## R^2 (amount of heterogeneity accounted for):            26.06%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0496 (SE = 0.0243)
+    ## tau (square root of estimated tau^2 value):             0.2228
+    ## I^2 (residual heterogeneity / unaccounted variability): 83.47%
+    ## H^2 (unaccounted variability / sampling variability):   6.05
+    ## R^2 (amount of heterogeneity accounted for):            46.34%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.6362, p-val < .0001
+    ## QE(df = 17) = 67.0091, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 8.2022, p-val = 0.0166
+    ## QM(df = 2) = 12.5285, p-val = 0.0019
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0134  0.0886  0.1517  0.8795  -0.1601  0.1870     
-    ## TMOR       0.1949  0.1293  1.5080  0.1316  -0.0584  0.4483     
-    ## typeRR     0.3902  0.1422  2.7438  0.0061   0.1115  0.6689  ** 
+    ## intrcpt    0.0295  0.0842  0.3508  0.7258  -0.1354  0.1945      
+    ## TMOR       0.1554  0.1243  1.2501  0.2112  -0.0883  0.3992      
+    ## typeRR     0.5833  0.1697  3.4369  0.0006   0.2507  0.9160  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7087,26 +7039,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TLC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0615 (SE = 0.0265)
-    ## tau (square root of estimated tau^2 value):             0.2480
-    ## I^2 (residual heterogeneity / unaccounted variability): 87.88%
-    ## H^2 (unaccounted variability / sampling variability):   8.25
-    ## R^2 (amount of heterogeneity accounted for):            20.09%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0516 (SE = 0.0250)
+    ## tau (square root of estimated tau^2 value):             0.2271
+    ## I^2 (residual heterogeneity / unaccounted variability): 84.31%
+    ## H^2 (unaccounted variability / sampling variability):   6.37
+    ## R^2 (amount of heterogeneity accounted for):            44.24%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 88.9814, p-val < .0001
+    ## QE(df = 17) = 65.4312, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 6.1117, p-val = 0.0471
+    ## QM(df = 2) = 11.1893, p-val = 0.0037
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1366  0.0908   1.5037  0.1327  -0.0414  0.3146    
-    ## TLC       -0.1010  0.1464  -0.6897  0.4904  -0.3878  0.1859    
-    ## typeRR     0.2976  0.1525   1.9510  0.0511  -0.0014  0.5965  . 
+    ## intrcpt    0.1327  0.0846   1.5681  0.1169  -0.0332  0.2985     
+    ## TLC       -0.0969  0.1372  -0.7064  0.4799  -0.3657  0.1719     
+    ## typeRR     0.5217  0.1786   2.9206  0.0035   0.1716  0.8718  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7116,26 +7068,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TRC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0559 (SE = 0.0246)
-    ## tau (square root of estimated tau^2 value):             0.2364
-    ## I^2 (residual heterogeneity / unaccounted variability): 85.97%
-    ## H^2 (unaccounted variability / sampling variability):   7.13
-    ## R^2 (amount of heterogeneity accounted for):            27.42%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0486 (SE = 0.0240)
+    ## tau (square root of estimated tau^2 value):             0.2205
+    ## I^2 (residual heterogeneity / unaccounted variability): 82.39%
+    ## H^2 (unaccounted variability / sampling variability):   5.68
+    ## R^2 (amount of heterogeneity accounted for):            47.42%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 86.6171, p-val < .0001
+    ## QE(df = 17) = 62.8526, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 7.6195, p-val = 0.0222
+    ## QM(df = 2) = 12.0437, p-val = 0.0024
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1666  0.0879   1.8950  0.0581  -0.0057  0.3389  . 
-    ## TRC       -0.1575  0.1237  -1.2731  0.2030  -0.4001  0.0850    
-    ## typeRR     0.3006  0.1387   2.1672  0.0302   0.0288  0.5725  * 
+    ## intrcpt    0.1514  0.0874   1.7313  0.0834  -0.0200  0.3227   . 
+    ## TRC       -0.1264  0.1311  -0.9640  0.3351  -0.3833  0.1305     
+    ## typeRR     0.5015  0.1772   2.8308  0.0046   0.1543  0.8488  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7145,26 +7097,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TCOM + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0554 (SE = 0.0244)
-    ## tau (square root of estimated tau^2 value):             0.2353
-    ## I^2 (residual heterogeneity / unaccounted variability): 85.86%
-    ## H^2 (unaccounted variability / sampling variability):   7.07
-    ## R^2 (amount of heterogeneity accounted for):            28.07%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0484 (SE = 0.0239)
+    ## tau (square root of estimated tau^2 value):             0.2200
+    ## I^2 (residual heterogeneity / unaccounted variability): 82.31%
+    ## H^2 (unaccounted variability / sampling variability):   5.65
+    ## R^2 (amount of heterogeneity accounted for):            47.66%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 86.2671, p-val < .0001
+    ## QE(df = 17) = 62.4477, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 8.2854, p-val = 0.0159
+    ## QM(df = 2) = 12.6139, p-val = 0.0018
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1935  0.0941   2.0567  0.0397   0.0091  0.3778  * 
-    ## TCOM      -0.1843  0.1228  -1.5007  0.1334  -0.4250  0.0564    
-    ## typeRR     0.2797  0.1404   1.9922  0.0464   0.0045  0.5548  * 
+    ## intrcpt    0.1777  0.0942   1.8855  0.0594  -0.0070  0.3624   . 
+    ## TCOM      -0.1577  0.1302  -1.2109  0.2259  -0.4129  0.0975     
+    ## typeRR     0.4751  0.1804   2.6334  0.0085   0.1215  0.8287  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7174,26 +7126,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TPAD + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0601 (SE = 0.0257)
-    ## tau (square root of estimated tau^2 value):             0.2451
-    ## I^2 (residual heterogeneity / unaccounted variability): 88.00%
-    ## H^2 (unaccounted variability / sampling variability):   8.33
-    ## R^2 (amount of heterogeneity accounted for):            21.95%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0495 (SE = 0.0239)
+    ## tau (square root of estimated tau^2 value):             0.2225
+    ## I^2 (residual heterogeneity / unaccounted variability): 84.35%
+    ## H^2 (unaccounted variability / sampling variability):   6.39
+    ## R^2 (amount of heterogeneity accounted for):            46.46%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.0388, p-val < .0001
+    ## QE(df = 17) = 66.4886, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 5.9418, p-val = 0.0513
+    ## QM(df = 2) = 11.2379, p-val = 0.0036
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0870  0.0740  1.1751  0.2400  -0.0581  0.2321    
-    ## TPAD       0.1146  0.2452  0.4674  0.6402  -0.3660  0.5951    
-    ## typeRR     0.3462  0.1421  2.4361  0.0148   0.0677  0.6248  * 
+    ## intrcpt    0.0851  0.0687  1.2390  0.2153  -0.0495  0.2196      
+    ## TPAD       0.1174  0.2320  0.5060  0.6129  -0.3374  0.5722      
+    ## typeRR     0.5683  0.1696  3.3506  0.0008   0.2359  0.9007  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7203,26 +7155,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ LowIncome + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 19; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 17; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0693 (SE = 0.0312)
-    ## tau (square root of estimated tau^2 value):             0.2632
-    ## I^2 (residual heterogeneity / unaccounted variability): 89.41%
-    ## H^2 (unaccounted variability / sampling variability):   9.44
-    ## R^2 (amount of heterogeneity accounted for):            23.10%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0243 (SE = 0.0151)
+    ## tau (square root of estimated tau^2 value):             0.1560
+    ## I^2 (residual heterogeneity / unaccounted variability): 72.82%
+    ## H^2 (unaccounted variability / sampling variability):   3.68
+    ## R^2 (amount of heterogeneity accounted for):            77.76%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 16) = 88.9091, p-val < .0001
+    ## QE(df = 14) = 44.4327, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 6.7310, p-val = 0.0345
+    ## QM(df = 2) = 26.7286, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.1924  0.1218   1.5799  0.1141  -0.0463  0.4311    
-    ## LowIncome   -0.1263  0.1426  -0.8857  0.3758  -0.4059  0.1532    
-    ## typeRR       0.3830  0.1644   2.3294  0.0198   0.0607  0.7052  * 
+    ## intrcpt      0.1656  0.0874   1.8942  0.0582  -0.0058  0.3370    . 
+    ## LowIncome   -0.1093  0.1055  -1.0365  0.3000  -0.3160  0.0974      
+    ## typeRR       0.8403  0.1667   5.0415  <.0001   0.5136  1.1670  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7232,26 +7184,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ EL + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0608 (SE = 0.0263)
-    ## tau (square root of estimated tau^2 value):             0.2466
-    ## I^2 (residual heterogeneity / unaccounted variability): 86.98%
-    ## H^2 (unaccounted variability / sampling variability):   7.68
-    ## R^2 (amount of heterogeneity accounted for):            20.99%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0480 (SE = 0.0237)
+    ## tau (square root of estimated tau^2 value):             0.2191
+    ## I^2 (residual heterogeneity / unaccounted variability): 82.34%
+    ## H^2 (unaccounted variability / sampling variability):   5.66
+    ## R^2 (amount of heterogeneity accounted for):            48.11%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.5908, p-val < .0001
+    ## QE(df = 17) = 67.0335, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 6.7952, p-val = 0.0335
+    ## QM(df = 2) = 13.0631, p-val = 0.0015
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0500  0.0840  0.5956  0.5515  -0.1146  0.2146    
-    ## EL         0.1352  0.1279  1.0571  0.2905  -0.1155  0.3860    
-    ## typeRR     0.3329  0.1411  2.3598  0.0183   0.0564  0.6095  * 
+    ## intrcpt    0.0347  0.0785  0.4423  0.6582  -0.1191  0.1886      
+    ## EL         0.1725  0.1267  1.3613  0.1734  -0.0759  0.4209      
+    ## typeRR     0.5731  0.1669  3.4333  0.0006   0.2459  0.9003  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7261,26 +7213,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TDD + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0605 (SE = 0.0262)
-    ## tau (square root of estimated tau^2 value):             0.2460
-    ## I^2 (residual heterogeneity / unaccounted variability): 86.95%
-    ## H^2 (unaccounted variability / sampling variability):   7.66
-    ## R^2 (amount of heterogeneity accounted for):            21.39%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0529 (SE = 0.0256)
+    ## tau (square root of estimated tau^2 value):             0.2300
+    ## I^2 (residual heterogeneity / unaccounted variability): 83.45%
+    ## H^2 (unaccounted variability / sampling variability):   6.04
+    ## R^2 (amount of heterogeneity accounted for):            42.79%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 78.5234, p-val < .0001
+    ## QE(df = 17) = 60.4284, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 5.8281, p-val = 0.0543
+    ## QM(df = 2) = 10.5081, p-val = 0.0052
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0788  0.0876  0.8993  0.3685  -0.0930  0.2506    
-    ## TDD        0.0474  0.1310  0.3622  0.7172  -0.2093  0.3042    
-    ## typeRR     0.3455  0.1432  2.4128  0.0158   0.0648  0.6261  * 
+    ## intrcpt    0.0953  0.0841  1.1337  0.2569  -0.0695  0.2601     
+    ## TDD        0.0019  0.1267  0.0148  0.9882  -0.2465  0.2503     
+    ## typeRR     0.5590  0.1725  3.2411  0.0012   0.2210  0.8970  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7290,26 +7242,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TTEC + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0452 (SE = 0.0207)
-    ## tau (square root of estimated tau^2 value):             0.2127
-    ## I^2 (residual heterogeneity / unaccounted variability): 84.16%
-    ## H^2 (unaccounted variability / sampling variability):   6.31
-    ## R^2 (amount of heterogeneity accounted for):            41.23%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0442 (SE = 0.0222)
+    ## tau (square root of estimated tau^2 value):             0.2103
+    ## I^2 (residual heterogeneity / unaccounted variability): 82.09%
+    ## H^2 (unaccounted variability / sampling variability):   5.58
+    ## R^2 (amount of heterogeneity accounted for):            52.18%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 82.7029, p-val < .0001
+    ## QE(df = 17) = 65.5326, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 12.0569, p-val = 0.0024
+    ## QM(df = 2) = 14.5038, p-val = 0.0007
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0111  0.0731  0.1514  0.8797  -0.1323  0.1544     
-    ## TTEC       0.2696  0.1180  2.2857  0.0223   0.0384  0.5008   * 
-    ## typeRR     0.3231  0.1252  2.5808  0.0099   0.0777  0.5684  ** 
+    ## intrcpt    0.0311  0.0737  0.4215  0.6734  -0.1134  0.1755     
+    ## TTEC       0.2041  0.1246  1.6389  0.1012  -0.0400  0.4483     
+    ## typeRR     0.4912  0.1667  2.9468  0.0032   0.1645  0.8179  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7319,26 +7271,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSTR + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0567 (SE = 0.0248)
-    ## tau (square root of estimated tau^2 value):             0.2382
-    ## I^2 (residual heterogeneity / unaccounted variability): 86.81%
-    ## H^2 (unaccounted variability / sampling variability):   7.58
-    ## R^2 (amount of heterogeneity accounted for):            26.30%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0336 (SE = 0.0181)
+    ## tau (square root of estimated tau^2 value):             0.1832
+    ## I^2 (residual heterogeneity / unaccounted variability): 77.40%
+    ## H^2 (unaccounted variability / sampling variability):   4.43
+    ## R^2 (amount of heterogeneity accounted for):            63.69%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 84.8109, p-val < .0001
+    ## QE(df = 17) = 52.0484, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 7.2736, p-val = 0.0263
+    ## QM(df = 2) = 17.9917, p-val = 0.0001
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.1307  0.0750   1.7421  0.0815  -0.0163  0.2777  . 
-    ## TSTR      -0.1742  0.1508  -1.1548  0.2482  -0.4698  0.1214    
-    ## typeRR     0.3341  0.1371   2.4367  0.0148   0.0654  0.6028  * 
+    ##          estimate      se     zval    pval    ci.lb    ci.ub 
+    ## intrcpt    0.1410  0.0622   2.2674  0.0234   0.0191   0.2629    * 
+    ## TSTR      -0.2561  0.1279  -2.0023  0.0453  -0.5069  -0.0054    * 
+    ## typeRR     0.5992  0.1496   4.0058  <.0001   0.3060   0.8923  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7348,26 +7300,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ CONT + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0268 (SE = 0.0136)
-    ## tau (square root of estimated tau^2 value):             0.1636
-    ## I^2 (residual heterogeneity / unaccounted variability): 76.54%
-    ## H^2 (unaccounted variability / sampling variability):   4.26
-    ## R^2 (amount of heterogeneity accounted for):            65.25%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0217 (SE = 0.0129)
+    ## tau (square root of estimated tau^2 value):             0.1473
+    ## I^2 (residual heterogeneity / unaccounted variability): 70.26%
+    ## H^2 (unaccounted variability / sampling variability):   3.36
+    ## R^2 (amount of heterogeneity accounted for):            76.54%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 65.4045, p-val < .0001
+    ## QE(df = 17) = 49.8196, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 24.2330, p-val < .0001
+    ## QM(df = 2) = 30.3294, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0370  0.0543  0.6812  0.4957  -0.0694  0.1434      
-    ## CONTALT    0.6117  0.1569  3.8978  <.0001   0.3041  0.9193  *** 
-    ## typeRR     0.2916  0.1026  2.8426  0.0045   0.0905  0.4927   ** 
+    ## intrcpt    0.0429  0.0506  0.8481  0.3964  -0.0563  0.1421      
+    ## CONTALT    0.5464  0.1536  3.5566  0.0004   0.2453  0.8475  *** 
+    ## typeRR     0.4669  0.1317  3.5439  0.0004   0.2087  0.7251  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7377,26 +7329,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Duration + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0629 (SE = 0.0269)
-    ## tau (square root of estimated tau^2 value):             0.2507
-    ## I^2 (residual heterogeneity / unaccounted variability): 88.07%
-    ## H^2 (unaccounted variability / sampling variability):   8.38
-    ## R^2 (amount of heterogeneity accounted for):            18.33%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0448 (SE = 0.0223)
+    ## tau (square root of estimated tau^2 value):             0.2116
+    ## I^2 (residual heterogeneity / unaccounted variability): 82.31%
+    ## H^2 (unaccounted variability / sampling variability):   5.65
+    ## R^2 (amount of heterogeneity accounted for):            51.60%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 89.5294, p-val < .0001
+    ## QE(df = 17) = 62.5839, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 5.6166, p-val = 0.0603
+    ## QM(df = 2) = 13.5896, p-val = 0.0011
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.0667  0.1452  0.4595  0.6459  -0.2179  0.3513    
-    ## Duration    0.0377  0.1523  0.2474  0.8046  -0.2609  0.3362    
-    ## typeRR      0.3453  0.1468  2.3518  0.0187   0.0575  0.6330  * 
+    ##           estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt    -0.0810  0.1431  -0.5663  0.5712  -0.3616  0.1995      
+    ## Duration    0.2092  0.1533   1.3648  0.1723  -0.0912  0.5097      
+    ## typeRR      0.6782  0.1854   3.6589  0.0003   0.3149  1.0416  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7406,26 +7358,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Hours + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 21; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 19; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0670 (SE = 0.0291)
-    ## tau (square root of estimated tau^2 value):             0.2588
-    ## I^2 (residual heterogeneity / unaccounted variability): 88.22%
-    ## H^2 (unaccounted variability / sampling variability):   8.49
-    ## R^2 (amount of heterogeneity accounted for):            18.48%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0538 (SE = 0.0266)
+    ## tau (square root of estimated tau^2 value):             0.2319
+    ## I^2 (residual heterogeneity / unaccounted variability): 83.82%
+    ## H^2 (unaccounted variability / sampling variability):   6.18
+    ## R^2 (amount of heterogeneity accounted for):            45.73%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 18) = 84.9642, p-val < .0001
+    ## QE(df = 16) = 57.7967, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 5.3908, p-val = 0.0675
+    ## QM(df = 2) = 10.8845, p-val = 0.0043
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.0703  0.1188  0.5922  0.5537  -0.1624  0.3031    
-    ## Hours      0.0007  0.0023  0.2902  0.7717  -0.0039  0.0052    
-    ## typeRR     0.3523  0.1534  2.2972  0.0216   0.0517  0.6530  * 
+    ## intrcpt    0.0329  0.1107  0.2970  0.7665  -0.1841  0.2498     
+    ## Hours      0.0016  0.0022  0.7149  0.4747  -0.0027  0.0058     
+    ## typeRR     0.6034  0.1840  3.2789  0.0010   0.2427  0.9641  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7435,26 +7387,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ design + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0631 (SE = 0.0271)
-    ## tau (square root of estimated tau^2 value):             0.2513
-    ## I^2 (residual heterogeneity / unaccounted variability): 88.10%
-    ## H^2 (unaccounted variability / sampling variability):   8.41
-    ## R^2 (amount of heterogeneity accounted for):            17.99%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0530 (SE = 0.0256)
+    ## tau (square root of estimated tau^2 value):             0.2303
+    ## I^2 (residual heterogeneity / unaccounted variability): 84.61%
+    ## H^2 (unaccounted variability / sampling variability):   6.50
+    ## R^2 (amount of heterogeneity accounted for):            42.66%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 90.3151, p-val < .0001
+    ## QE(df = 17) = 66.6154, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 5.5576, p-val = 0.0621
+    ## QM(df = 2) = 10.7842, p-val = 0.0046
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.1035  0.0833   1.2432  0.2138  -0.0597  0.2667    
-    ## designQED   -0.0186  0.1405  -0.1322  0.8948  -0.2939  0.2567    
-    ## typeRR       0.3352  0.1440   2.3284  0.0199   0.0531  0.6174  * 
+    ## intrcpt      0.1177  0.0783   1.5040  0.1326  -0.0357  0.2712     
+    ## designQED   -0.0727  0.1344  -0.5409  0.5886  -0.3361  0.1907     
+    ## typeRR       0.5641  0.1728   3.2640  0.0011   0.2254  0.9028  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7464,27 +7416,27 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grade + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0650 (SE = 0.0279)
-    ## tau (square root of estimated tau^2 value):             0.2549
-    ## I^2 (residual heterogeneity / unaccounted variability): 89.19%
-    ## H^2 (unaccounted variability / sampling variability):   9.25
-    ## R^2 (amount of heterogeneity accounted for):            15.64%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0547 (SE = 0.0264)
+    ## tau (square root of estimated tau^2 value):             0.2339
+    ## I^2 (residual heterogeneity / unaccounted variability): 86.16%
+    ## H^2 (unaccounted variability / sampling variability):   7.22
+    ## R^2 (amount of heterogeneity accounted for):            40.82%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 18) = 89.9640, p-val < .0001
+    ## QE(df = 16) = 66.4138, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:4):
-    ## QM(df = 3) = 5.6772, p-val = 0.1284
+    ## QM(df = 3) = 10.5392, p-val = 0.0145
     ## 
     ## Model Results:
     ## 
     ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.0968  0.0836   1.1581  0.2468  -0.0670  0.2606    
-    ## gradeK-2    -0.0331  0.1876  -0.1762  0.8602  -0.4008  0.3347    
-    ## gradeBoth    0.1396  0.3213   0.4347  0.6638  -0.4900  0.7693    
-    ## typeRR       0.3394  0.1507   2.2527  0.0243   0.0441  0.6347  * 
+    ## intrcpt      0.0941  0.0777   1.2117  0.2256  -0.0581  0.2464     
+    ## gradeK-2    -0.0302  0.1793  -0.1686  0.8661  -0.3816  0.3211     
+    ## gradeBoth    0.1423  0.3034   0.4690  0.6391  -0.4523  0.7369     
+    ## typeRR       0.5617  0.1785   3.1464  0.0017   0.2118  0.9115  ** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7494,26 +7446,26 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ grouping + type)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 22; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 20; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0388 (SE = 0.0184)
-    ## tau (square root of estimated tau^2 value):             0.1969
-    ## I^2 (residual heterogeneity / unaccounted variability): 81.14%
-    ## H^2 (unaccounted variability / sampling variability):   5.30
-    ## R^2 (amount of heterogeneity accounted for):            49.66%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.0388 (SE = 0.0203)
+    ## tau (square root of estimated tau^2 value):             0.1970
+    ## I^2 (residual heterogeneity / unaccounted variability): 78.80%
+    ## H^2 (unaccounted variability / sampling variability):   4.72
+    ## R^2 (amount of heterogeneity accounted for):            58.05%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 19) = 68.9672, p-val < .0001
+    ## QE(df = 17) = 55.6481, p-val < .0001
     ## 
     ## Test of Moderators (coefficients 2:3):
-    ## QM(df = 2) = 13.5932, p-val = 0.0011
+    ## QM(df = 2) = 15.8232, p-val = 0.0004
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se     zval    pval    ci.lb    ci.ub 
-    ## intrcpt     0.1564  0.0653   2.3970  0.0165   0.0285   0.2843    * 
-    ## grouping   -0.3012  0.1217  -2.4745  0.0133  -0.5398  -0.0626    * 
-    ## typeRR      0.4643  0.1311   3.5415  0.0004   0.2073   0.7212  *** 
+    ##           estimate      se     zval    pval    ci.lb   ci.ub 
+    ## intrcpt     0.1408  0.0661   2.1298  0.0332   0.0112  0.2704    * 
+    ## grouping   -0.2275  0.1314  -1.7312  0.0834  -0.4850  0.0301    . 
+    ## typeRR      0.5916  0.1563   3.7845  0.0002   0.2852  0.8979  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7525,25 +7477,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.1941 (SE = 0.1705)
-    ## tau (square root of estimated tau^2 value):             0.4406
-    ## I^2 (residual heterogeneity / unaccounted variability): 96.86%
-    ## H^2 (unaccounted variability / sampling variability):   31.82
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0412)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 45.3398, p-val < .0001
+    ## QE(df = 1) = 0.9266, p-val = 0.3358
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.5898, p-val = 0.4425
+    ## QM(df = 1) = 21.4317, p-val < .0001
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.5450  0.2285   2.3851  0.0171   0.0971  0.9929  * 
-    ## Content   -0.3931  0.5118  -0.7680  0.4425  -1.3962  0.6101    
+    ##          estimate      se     zval    pval    ci.lb    ci.ub 
+    ## intrcpt    0.9126  0.1066   8.5594  <.0001   0.7036   1.1216  *** 
+    ## Content   -0.7606  0.1643  -4.6294  <.0001  -1.0827  -0.4386  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7553,20 +7505,20 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.1666 (SE = 0.1282)
-    ## tau (square root of estimated tau^2 value):      0.4082
-    ## I^2 (total heterogeneity / total variability):   95.89%
-    ## H^2 (total variability / sampling variability):  24.35
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 4) = 45.9085, p-val < .0001
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.4636  0.1905  2.4339  0.0149  0.0903  0.8370  * 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7576,25 +7528,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0995 (SE = 0.0884)
-    ## tau (square root of estimated tau^2 value):             0.3154
-    ## I^2 (residual heterogeneity / unaccounted variability): 94.61%
-    ## H^2 (unaccounted variability / sampling variability):   18.54
-    ## R^2 (amount of heterogeneity accounted for):            40.28%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.2286 (SE = 0.3453)
+    ## tau (square root of estimated tau^2 value):             0.4782
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.63%
+    ## H^2 (unaccounted variability / sampling variability):   15.70
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 28.9358, p-val < .0001
+    ## QE(df = 1) = 15.6957, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.3488, p-val = 0.0673
+    ## QM(df = 1) = 0.8597, p-val = 0.3538
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3301  0.1646  2.0060  0.0449   0.0076  0.6526  * 
-    ## TMULT      0.7530  0.4115  1.8300  0.0673  -0.0535  1.5595  . 
+    ## intrcpt    0.5015  0.3494  1.4352  0.1512  -0.1833  1.1864    
+    ## TMULT      0.5816  0.6273  0.9272  0.3538  -0.6478  1.8110    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7604,20 +7556,20 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.1666 (SE = 0.1282)
-    ## tau (square root of estimated tau^2 value):      0.4082
-    ## I^2 (total heterogeneity / total variability):   95.89%
-    ## H^2 (total variability / sampling variability):  24.35
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 4) = 45.9085, p-val < .0001
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.4636  0.1905  2.4339  0.0149  0.0903  0.8370  * 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7627,25 +7579,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0995 (SE = 0.0884)
-    ## tau (square root of estimated tau^2 value):             0.3154
-    ## I^2 (residual heterogeneity / unaccounted variability): 94.61%
-    ## H^2 (unaccounted variability / sampling variability):   18.54
-    ## R^2 (amount of heterogeneity accounted for):            40.28%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.2286 (SE = 0.3453)
+    ## tau (square root of estimated tau^2 value):             0.4782
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.63%
+    ## H^2 (unaccounted variability / sampling variability):   15.70
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 28.9358, p-val < .0001
+    ## QE(df = 1) = 15.6957, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.3488, p-val = 0.0673
+    ## QM(df = 1) = 0.8597, p-val = 0.3538
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3301  0.1646  2.0060  0.0449   0.0076  0.6526  * 
-    ## TSYN       0.7530  0.4115  1.8300  0.0673  -0.0535  1.5595  . 
+    ## intrcpt    0.5015  0.3494  1.4352  0.1512  -0.1833  1.1864    
+    ## TSYN       0.5816  0.6273  0.9272  0.3538  -0.6478  1.8110    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7655,25 +7607,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0995 (SE = 0.0884)
-    ## tau (square root of estimated tau^2 value):             0.3154
-    ## I^2 (residual heterogeneity / unaccounted variability): 94.61%
-    ## H^2 (unaccounted variability / sampling variability):   18.54
-    ## R^2 (amount of heterogeneity accounted for):            40.28%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.2286 (SE = 0.3453)
+    ## tau (square root of estimated tau^2 value):             0.4782
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.63%
+    ## H^2 (unaccounted variability / sampling variability):   15.70
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 28.9358, p-val < .0001
+    ## QE(df = 1) = 15.6957, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.3488, p-val = 0.0673
+    ## QM(df = 1) = 0.8597, p-val = 0.3538
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3301  0.1646  2.0060  0.0449   0.0076  0.6526  * 
-    ## TMOR       0.7530  0.4115  1.8300  0.0673  -0.0535  1.5595  . 
+    ## intrcpt    0.5015  0.3494  1.4352  0.1512  -0.1833  1.1864    
+    ## TMOR       0.5816  0.6273  0.9272  0.3538  -0.6478  1.8110    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7683,20 +7635,20 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.1666 (SE = 0.1282)
-    ## tau (square root of estimated tau^2 value):      0.4082
-    ## I^2 (total heterogeneity / total variability):   95.89%
-    ## H^2 (total variability / sampling variability):  24.35
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 4) = 45.9085, p-val < .0001
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.4636  0.1905  2.4339  0.0149  0.0903  0.8370  * 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7706,25 +7658,20 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.2085 (SE = 0.1850)
-    ## tau (square root of estimated tau^2 value):             0.4566
-    ## I^2 (residual heterogeneity / unaccounted variability): 94.55%
-    ## H^2 (unaccounted variability / sampling variability):   18.34
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
-    ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 45.6299, p-val < .0001
-    ## 
-    ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.3743, p-val = 0.5407
+    ## Test for Heterogeneity:
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.5349  0.2380   2.2473  0.0246   0.0684  1.0014  * 
-    ## TRC       -0.3170  0.5182  -0.6118  0.5407  -1.3326  0.6986    
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7734,25 +7681,20 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.2085 (SE = 0.1850)
-    ## tau (square root of estimated tau^2 value):             0.4566
-    ## I^2 (residual heterogeneity / unaccounted variability): 94.55%
-    ## H^2 (unaccounted variability / sampling variability):   18.34
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
-    ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 45.6299, p-val < .0001
-    ## 
-    ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.3743, p-val = 0.5407
+    ## Test for Heterogeneity:
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.5349  0.2380   2.2473  0.0246   0.0684  1.0014  * 
-    ## TCOM      -0.3170  0.5182  -0.6118  0.5407  -1.3326  0.6986    
+    ## estimate      se    zval    pval   ci.lb   ci.ub 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7762,20 +7704,20 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.1666 (SE = 0.1282)
-    ## tau (square root of estimated tau^2 value):      0.4082
-    ## I^2 (total heterogeneity / total variability):   95.89%
-    ## H^2 (total variability / sampling variability):  24.35
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 4) = 45.9085, p-val < .0001
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.4636  0.1905  2.4339  0.0149  0.0903  0.8370  * 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7784,54 +7726,32 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ LowIncome)
 ```
 
-    ## 
-    ## Mixed-Effects Model (k = 4; tau^2 estimator: REML)
-    ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.2959 (SE = 0.3117)
-    ## tau (square root of estimated tau^2 value):             0.5440
-    ## I^2 (residual heterogeneity / unaccounted variability): 95.84%
-    ## H^2 (unaccounted variability / sampling variability):   24.06
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
-    ## 
-    ## Test for Residual Heterogeneity:
-    ## QE(df = 2) = 44.8309, p-val < .0001
-    ## 
-    ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0605, p-val = 0.8057
-    ## 
-    ## Model Results:
-    ## 
-    ##            estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.6238  0.3986   1.5649  0.1176  -0.1575  1.4050    
-    ## LowIncome   -0.1372  0.5579  -0.2460  0.8057  -1.2306  0.9562    
-    ## 
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## Error in rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == : Number of parameters to be estimated is larger than the number of observations.
 
 ``` r
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ EL)
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.2140 (SE = 0.1869)
-    ## tau (square root of estimated tau^2 value):             0.4626
-    ## I^2 (residual heterogeneity / unaccounted variability): 94.82%
-    ## H^2 (unaccounted variability / sampling variability):   19.30
+    ## tau^2 (estimated amount of residual heterogeneity):     0.2286 (SE = 0.3453)
+    ## tau (square root of estimated tau^2 value):             0.4782
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.63%
+    ## H^2 (unaccounted variability / sampling variability):   15.70
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 45.1752, p-val < .0001
+    ## QE(df = 1) = 15.6957, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.2968, p-val = 0.5859
+    ## QM(df = 1) = 0.8597, p-val = 0.3538
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3754  0.2739  1.3707  0.1705  -0.1614  0.9122    
-    ## EL         0.2392  0.4390  0.5448  0.5859  -0.6213  1.0996    
+    ## intrcpt    0.5015  0.3494  1.4352  0.1512  -0.1833  1.1864    
+    ## EL         0.5816  0.6273  0.9272  0.3538  -0.6478  1.8110    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7841,25 +7761,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.1557 (SE = 0.1390)
-    ## tau (square root of estimated tau^2 value):             0.3946
-    ## I^2 (residual heterogeneity / unaccounted variability): 96.11%
-    ## H^2 (unaccounted variability / sampling variability):   25.68
-    ## R^2 (amount of heterogeneity accounted for):            6.56%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.4043 (SE = 0.6130)
+    ## tau (square root of estimated tau^2 value):             0.6359
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.27%
+    ## H^2 (unaccounted variability / sampling variability):   14.86
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 20.1580, p-val = 0.0002
+    ## QE(df = 1) = 14.8551, p-val = 0.0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.1021, p-val = 0.2938
+    ## QM(df = 1) = 0.0965, p-val = 0.7560
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3655  0.2063  1.7717  0.0764  -0.0388  0.7698  . 
-    ## TDD        0.4853  0.4623  1.0498  0.2938  -0.4208  1.3914    
+    ## intrcpt    0.6030  0.4653  1.2958  0.1950  -0.3090  1.5150    
+    ## TDD        0.2478  0.7977  0.3107  0.7560  -1.3156  1.8113    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7869,25 +7789,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0039)
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0412)
     ## tau (square root of estimated tau^2 value):             0
     ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
     ## H^2 (unaccounted variability / sampling variability):   1.00
     ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 2.0819, p-val = 0.5556
+    ## QE(df = 1) = 0.9266, p-val = 0.3358
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 43.8267, p-val < .0001
+    ## QM(df = 1) = 21.4317, p-val < .0001
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se    zval    pval   ci.lb   ci.ub 
-    ## intrcpt    0.1688  0.0354  4.7642  <.0001  0.0994  0.2383  *** 
-    ## TTEC       0.7438  0.1124  6.6202  <.0001  0.5236  0.9640  *** 
+    ##          estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt    0.1520  0.1250  1.2158  0.2241  -0.0930  0.3970      
+    ## TTEC       0.7606  0.1643  4.6294  <.0001   0.4386  1.0827  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7897,25 +7817,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.1941 (SE = 0.1705)
-    ## tau (square root of estimated tau^2 value):             0.4406
-    ## I^2 (residual heterogeneity / unaccounted variability): 96.86%
-    ## H^2 (unaccounted variability / sampling variability):   31.82
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0412)
+    ## tau (square root of estimated tau^2 value):             0
+    ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
+    ## H^2 (unaccounted variability / sampling variability):   1.00
+    ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 45.3398, p-val < .0001
+    ## QE(df = 1) = 0.9266, p-val = 0.3358
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.5898, p-val = 0.4425
+    ## QM(df = 1) = 21.4317, p-val < .0001
     ## 
     ## Model Results:
     ## 
-    ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.5450  0.2285   2.3851  0.0171   0.0971  0.9929  * 
-    ## TSTR      -0.3931  0.5118  -0.7680  0.4425  -1.3962  0.6101    
+    ##          estimate      se     zval    pval    ci.lb    ci.ub 
+    ## intrcpt    0.9126  0.1066   8.5594  <.0001   0.7036   1.1216  *** 
+    ## TSTR      -0.7606  0.1643  -4.6294  <.0001  -1.0827  -0.4386  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7925,25 +7845,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.0995 (SE = 0.0884)
-    ## tau (square root of estimated tau^2 value):             0.3154
-    ## I^2 (residual heterogeneity / unaccounted variability): 94.61%
-    ## H^2 (unaccounted variability / sampling variability):   18.54
-    ## R^2 (amount of heterogeneity accounted for):            40.28%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.2286 (SE = 0.3453)
+    ## tau (square root of estimated tau^2 value):             0.4782
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.63%
+    ## H^2 (unaccounted variability / sampling variability):   15.70
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 28.9358, p-val < .0001
+    ## QE(df = 1) = 15.6957, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 3.3488, p-val = 0.0673
+    ## QM(df = 1) = 0.8597, p-val = 0.3538
     ## 
     ## Model Results:
     ## 
     ##          estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.3301  0.1646  2.0060  0.0449   0.0076  0.6526  * 
-    ## CONTALT    0.7530  0.4115  1.8300  0.0673  -0.0535  1.5595  . 
+    ## intrcpt    0.5015  0.3494  1.4352  0.1512  -0.1833  1.1864    
+    ## CONTALT    0.5816  0.6273  0.9272  0.3538  -0.6478  1.8110    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7953,25 +7873,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.2302 (SE = 0.2004)
-    ## tau (square root of estimated tau^2 value):             0.4798
-    ## I^2 (residual heterogeneity / unaccounted variability): 97.20%
-    ## H^2 (unaccounted variability / sampling variability):   35.69
+    ## tau^2 (estimated amount of residual heterogeneity):     0.2286 (SE = 0.3453)
+    ## tau (square root of estimated tau^2 value):             0.4782
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.63%
+    ## H^2 (unaccounted variability / sampling variability):   15.70
     ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 35.7259, p-val < .0001
+    ## QE(df = 1) = 15.6957, p-val < .0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.0137, p-val = 0.9068
+    ## QM(df = 1) = 0.8597, p-val = 0.3538
     ## 
     ## Model Results:
     ## 
-    ##           estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt     0.5015  0.3505   1.4307  0.1525  -0.1855  1.1885    
-    ## Duration   -0.0529  0.4522  -0.1171  0.9068  -0.9393  0.8335    
+    ##           estimate      se    zval    pval    ci.lb   ci.ub 
+    ## intrcpt     0.5015  0.3494  1.4352  0.1512  -0.1833  1.1864    
+    ## Duration    0.5816  0.6273  0.9272  0.3538  -0.6478  1.8110    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -7981,25 +7901,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.1929 (SE = 0.1713)
-    ## tau (square root of estimated tau^2 value):             0.4393
-    ## I^2 (residual heterogeneity / unaccounted variability): 96.61%
-    ## H^2 (unaccounted variability / sampling variability):   29.46
-    ## R^2 (amount of heterogeneity accounted for):            0.00%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.1899 (SE = 0.2908)
+    ## tau (square root of estimated tau^2 value):             0.4358
+    ## I^2 (residual heterogeneity / unaccounted variability): 92.38%
+    ## H^2 (unaccounted variability / sampling variability):   13.12
+    ## R^2 (amount of heterogeneity accounted for):            10.23%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 32.8656, p-val < .0001
+    ## QE(df = 1) = 13.1183, p-val = 0.0003
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 0.5285, p-val = 0.4672
+    ## QM(df = 1) = 1.1967, p-val = 0.2740
     ## 
     ## Model Results:
     ## 
     ##          estimate      se     zval    pval    ci.lb   ci.ub 
-    ## intrcpt    0.7627  0.4555   1.6744  0.0941  -0.1301  1.6555  . 
-    ## Hours     -0.0140  0.0193  -0.7270  0.4672  -0.0518  0.0238    
+    ## intrcpt   -0.0848  0.7481  -0.1134  0.9097  -1.5511  1.3815    
+    ## Hours      0.0601  0.0550   1.0939  0.2740  -0.0476  0.1678    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -8009,25 +7929,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0.1557 (SE = 0.1390)
-    ## tau (square root of estimated tau^2 value):             0.3946
-    ## I^2 (residual heterogeneity / unaccounted variability): 96.11%
-    ## H^2 (unaccounted variability / sampling variability):   25.68
-    ## R^2 (amount of heterogeneity accounted for):            6.56%
+    ## tau^2 (estimated amount of residual heterogeneity):     0.4043 (SE = 0.6130)
+    ## tau (square root of estimated tau^2 value):             0.6359
+    ## I^2 (residual heterogeneity / unaccounted variability): 93.27%
+    ## H^2 (unaccounted variability / sampling variability):   14.86
+    ## R^2 (amount of heterogeneity accounted for):            0.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 20.1580, p-val = 0.0002
+    ## QE(df = 1) = 14.8551, p-val = 0.0001
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 1.1021, p-val = 0.2938
+    ## QM(df = 1) = 0.0965, p-val = 0.7560
     ## 
     ## Model Results:
     ## 
     ##            estimate      se    zval    pval    ci.lb   ci.ub 
-    ## intrcpt      0.3655  0.2063  1.7717  0.0764  -0.0388  0.7698  . 
-    ## designQED    0.4853  0.4623  1.0498  0.2938  -0.4208  1.3914    
+    ## intrcpt      0.6030  0.4653  1.2958  0.1950  -0.3090  1.5150    
+    ## designQED    0.2478  0.7977  0.3107  0.7560  -1.3156  1.8113    
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -8037,20 +7957,20 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Random-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Random-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of total heterogeneity): 0.1666 (SE = 0.1282)
-    ## tau (square root of estimated tau^2 value):      0.4082
-    ## I^2 (total heterogeneity / total variability):   95.89%
-    ## H^2 (total variability / sampling variability):  24.35
+    ## tau^2 (estimated amount of total heterogeneity): 0.2116 (SE = 0.2357)
+    ## tau (square root of estimated tau^2 value):      0.4600
+    ## I^2 (total heterogeneity / total variability):   90.86%
+    ## H^2 (total variability / sampling variability):  10.94
     ## 
     ## Test for Heterogeneity:
-    ## Q(df = 4) = 45.9085, p-val < .0001
+    ## Q(df = 2) = 22.3583, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ## estimate      se    zval    pval   ci.lb   ci.ub 
-    ##   0.4636  0.1905  2.4339  0.0149  0.0903  0.8370  * 
+    ##   0.6811  0.2802  2.4306  0.0151  0.1319  1.2302  * 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -8060,25 +7980,25 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 ```
 
     ## 
-    ## Mixed-Effects Model (k = 5; tau^2 estimator: REML)
+    ## Mixed-Effects Model (k = 3; tau^2 estimator: REML)
     ## 
-    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0039)
+    ## tau^2 (estimated amount of residual heterogeneity):     0 (SE = 0.0412)
     ## tau (square root of estimated tau^2 value):             0
     ## I^2 (residual heterogeneity / unaccounted variability): 0.00%
     ## H^2 (unaccounted variability / sampling variability):   1.00
     ## R^2 (amount of heterogeneity accounted for):            100.00%
     ## 
     ## Test for Residual Heterogeneity:
-    ## QE(df = 3) = 2.0819, p-val = 0.5556
+    ## QE(df = 1) = 0.9266, p-val = 0.3358
     ## 
     ## Test of Moderators (coefficient 2):
-    ## QM(df = 1) = 43.8267, p-val < .0001
+    ## QM(df = 1) = 21.4317, p-val < .0001
     ## 
     ## Model Results:
     ## 
     ##           estimate      se     zval    pval    ci.lb    ci.ub 
     ## intrcpt     0.9126  0.1066   8.5594  <.0001   0.7036   1.1216  *** 
-    ## grouping   -0.7438  0.1124  -6.6202  <.0001  -0.9640  -0.5236  *** 
+    ## grouping   -0.7606  0.1643  -4.6294  <.0001  -1.0827  -0.4386  *** 
     ## 
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -8674,6 +8594,212 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mod
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
+## Publication Bias
+
+### Funnel plots
+
+``` r
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  funnel(xlab = "Vocabulary Effect Size")
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-35-1.png" width="672" />
+
+``` r
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  funnel(xlab = "Listening Comprehension Effect Size")
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-35-2.png" width="672" />
+
+``` r
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  funnel(xlab = "Reading Comprehension Effect Size")
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-35-3.png" width="672" />
+
+### Egger’s Test
+
+``` r
+# Vocabulary
+df_v %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>%
+  regtest(model = "rma", predictor = "sei")
+```
+
+    ## 
+    ## Regression Test for Funnel Plot Asymmetry
+    ## 
+    ## model:     mixed-effects meta-regression model
+    ## predictor: standard error
+    ## 
+    ## test for funnel plot asymmetry: z = 3.1121, p = 0.0019
+
+``` r
+# Listening Comp.
+df_l %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>%
+  regtest(model = "rma", predictor = "sei")
+```
+
+    ## 
+    ## Regression Test for Funnel Plot Asymmetry
+    ## 
+    ## model:     mixed-effects meta-regression model
+    ## predictor: standard error
+    ## 
+    ## test for funnel plot asymmetry: z = 2.4016, p = 0.0163
+
+``` r
+# Reading Comp.
+df_r %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  ) %>% 
+  regtest(model = "rma", predictor = "sei")
+```
+
+    ## 
+    ## Regression Test for Funnel Plot Asymmetry
+    ## 
+    ## model:     mixed-effects meta-regression model
+    ## predictor: standard error
+    ## 
+    ## test for funnel plot asymmetry: z = 0.9595, p = 0.3373
+
+### P Curves
+
+``` r
+# Vocabulary
+df_v %>% 
+  mutate(
+    SE = sqrt(EV)
+  ) %>% 
+  meta::metagen(
+    ES,
+    SE,
+    data = .,
+    comb.fixed = F,
+    comb.random = T,
+    method.tau = "REML",
+    hakn = T,
+    sm = "SMD"
+  ) %>% 
+  pcurve()
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-37-1.png" width="672" />
+
+    ## P-curve analysis 
+    ##  ----------------------- 
+    ## - Total number of provided studies: k = 68 
+    ## - Total number of p<0.05 studies included into the analysis: k = 39 (57.35%) 
+    ## - Total number of studies with p<0.025: k = 36 (52.94%) 
+    ##    
+    ## Results 
+    ##  ----------------------- 
+    ##                     pBinomial   zFull pFull   zHalf pHalf
+    ## Right-skewness test         0 -31.216     0 -31.570     0
+    ## Flatness test               1  28.320     1  31.259     1
+    ## Note: p-values of 0 or 1 correspond to p<0.001 and p>0.999, respectively.   
+    ## Power Estimate: 99% (99%-99%)
+    ##    
+    ## Evidential value 
+    ##  ----------------------- 
+    ## - Evidential value present: yes 
+    ## - Evidential value absent/inadequate: no
+
+``` r
+# Reading Comp
+df_r %>% 
+  mutate(
+    SE = sqrt(EV)
+  ) %>% 
+  meta::metagen(
+    ES,
+    SE,
+    data = .,
+    comb.fixed = F,
+    comb.random = T,
+    method.tau = "REML",
+    hakn = T,
+    sm = "SMD"
+  ) %>% 
+  pcurve()
+```
+
+<img src="analysis_files/figure-gfm/unnamed-chunk-37-2.png" width="672" />
+
+    ## P-curve analysis 
+    ##  ----------------------- 
+    ## - Total number of provided studies: k = 20 
+    ## - Total number of p<0.05 studies included into the analysis: k = 4 (20%) 
+    ## - Total number of studies with p<0.025: k = 4 (20%) 
+    ##    
+    ## Results 
+    ##  ----------------------- 
+    ##                     pBinomial  zFull pFull  zHalf pHalf
+    ## Right-skewness test     0.062 -9.718     0 -9.432     0
+    ## Flatness test           1.000  7.509     1  7.895     1
+    ## Note: p-values of 0 or 1 correspond to p<0.001 and p>0.999, respectively.   
+    ## Power Estimate: 99% (99%-99%)
+    ##    
+    ## Evidential value 
+    ##  ----------------------- 
+    ## - Evidential value present: yes 
+    ## - Evidential value absent/inadequate: no
+
+``` r
+# # Listening Comp
+# df_l %>% 
+#   mutate(
+#     SE = sqrt(EV)
+#   ) %>% 
+#   meta::metagen(
+#     ES,
+#     SE,
+#     data = .,
+#     comb.fixed = F,
+#     comb.random = T,
+#     method.tau = "REML",
+#     hakn = T,
+#     sm = "SMD"
+#   ) %>% 
+#   pcurve()
+```
+
 ## MetaForest plots
 
 ### Vocabulary
@@ -8692,8 +8818,6 @@ df_v %>%
   plot()
 ```
 
-<img src="analysis_files/figure-gfm/unnamed-chunk-35-1.png" width="672" />
-
 ### Listening Comprehension
 
 ``` r
@@ -8710,8 +8834,6 @@ df_l %>%
   plot()
 ```
 
-<img src="analysis_files/figure-gfm/unnamed-chunk-36-1.png" width="672" />
-
 ### Reading Comprehension
 
 ``` r
@@ -8727,5 +8849,3 @@ df_r %>%
   preselect(replications = 500L) %>% 
   plot()
 ```
-
-<img src="analysis_files/figure-gfm/unnamed-chunk-37-1.png" width="672" />
