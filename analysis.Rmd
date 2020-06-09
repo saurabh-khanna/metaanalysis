@@ -362,7 +362,7 @@ df_clean <-
 
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
 df_clean %>% summary()
-df_clean %>% DT::datatable()
+df_clean %>% datatable()
 ```
 
 ### Summary stats
