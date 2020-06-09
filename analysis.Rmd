@@ -1666,8 +1666,8 @@ df_eo_clean <-
   rename(ES = es, EV = var)
 
 rm(df_el_post, df_el_prepost, df_eo_post,  df_eo_prepost)
-df_el_clean %>% DT::datatable()
-df_eo_clean %>% DT::datatable()
+df_el_clean %>% datatable()
+df_eo_clean %>% datatable()
 ```
 
 
