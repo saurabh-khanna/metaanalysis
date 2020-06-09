@@ -3,7 +3,7 @@ title: "Meta-analysis Script"
 author: "Saurabh Khanna"
 date: "`r Sys.Date()`"
 output: 
-  github_document:
+  html_document:
     toc: true
 ---
 
@@ -18,11 +18,12 @@ library(readxl)
 library(metafor)
 library(MAd)
 library(metaforest)
-#library(dmetar)
+library(dmetar)
 
 # Parameters
-data_file <- here::here("data/L&L Data Set Means SDs.xlsx")
+data_file <- here::here("data", "L&L Data Set Means SDs.xlsx")
 ```
+
 
 ## Reading in data
 
@@ -360,7 +361,7 @@ df_clean <-
 
 rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
 df_clean %>% summary()
-#df_clean %>% knitr::kable()
+df_clean %>% DT::datatable()
 ```
 
 ### Summary stats
@@ -1286,6 +1287,469 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mod
 ```
 
 
+## EL vs EO
+
+### EL
+
+EL Post:
+
+
+```{r}
+read_post_data <- function(type, category) {
+  read_xlsx(data_file, sheet = "ELs") %>% select(AUTYR = AUTH_YR, (ends_with(category) & contains(type))) %>% 
+    rename_at(vars(-AUTYR), ~ str_replace(., type, "")) %>%
+    rename_at(vars(-AUTYR), ~ str_replace(., category, "")) %>%
+    drop_na(AUTYR) %>%
+    filter(is.na(TM1pre)) %>% 
+    select_if(~ any(!is.na(.))) %>%
+    mutate(type = type) %>%
+    select(AUTYR, type, sort(current_vars()))
+}
+
+df_el_post <-
+  bind_rows(
+    read_post_data("VR", "EL"),
+    read_post_data("VS", "EL"),
+    read_post_data("RR", "EL"),
+    read_post_data("RS", "EL")
+  )
+
+for (m in 1:4) {
+  if (
+    !(str_glue("TM{m}post") %in% colnames(df_el_post)) | 
+    !(str_glue("CM{m}post") %in% colnames(df_el_post))
+  ) {
+    next
+  }
+  df_el_post <-
+    escalc(
+      data = df_el_post,
+      measure = "SMD",
+      m1i = df_el_post[, str_c("TM", m, "post")] %>% unlist(),
+      m2i = df_el_post[, str_c("CM", m, "post")] %>% unlist(),
+      sd1i = df_el_post[, str_c("TS", m, "post")] %>% unlist(),
+      sd2i = df_el_post[, str_c("CS", m, "post")] %>% unlist(),
+      n1i = df_el_post[, str_c("TN", m, "post")] %>% unlist(),
+      n2i = df_el_post[, str_c("CN", m, "post")] %>% unlist(),
+      var.names = c(str_glue("ES_{m}"), str_glue("EV_{m}"))
+    ) 
+}
+
+df_el_post <-
+  df_el_post %>% 
+  select(AUTYR, type, starts_with("ES")) %>% 
+  pivot_longer(cols = starts_with("ES"), names_to = "num", values_to = "ES", values_drop_na = T) %>%
+  mutate(num = str_sub(num, 4)) %>% 
+  left_join(
+    df_el_post %>% 
+      select(AUTYR, type, starts_with("EV")) %>% 
+      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
+      mutate(num = str_sub(num, 4)),
+    by = c("AUTYR", "type", "num")
+  ) %>% 
+  select(-num)
+```
+
+
+EL prepost:
+
+
+```{r}
+read_prepost_data <- function(type, category) {
+  read_xlsx(data_file, sheet = "ELs") %>% select(AUTYR = AUTH_YR, (ends_with(category) & contains(type))) %>% 
+    rename_at(vars(-AUTYR), ~ str_replace(., type, "")) %>%
+    rename_at(vars(-AUTYR), ~ str_replace(., category, "")) %>%
+    drop_na(AUTYR) %>%
+    filter(!is.na(TM1pre)) %>% 
+    select_if(~ any(!is.na(.))) %>%
+    mutate(type = type) %>%
+    select(AUTYR, type, sort(current_vars()))
+}
+
+df_el_prepost <-
+  bind_rows(
+    read_prepost_data("VR", "EL"),
+    read_prepost_data("VS", "EL"),
+    read_prepost_data("RR", "EL"),
+    read_prepost_data("RS", "EL")
+  ) %>% 
+  mutate(
+    TN1post = if_else(is.na(TN1post) & !is.na(TN1pre), TN1pre, TN1post),
+    TN2post = if_else(is.na(TN2post) & !is.na(TN2pre), TN2pre, TN2post),
+    CN1post = if_else(is.na(CN1post) & !is.na(CN1pre), CN1pre, CN1post),
+    CN2post = if_else(is.na(CN2post) & !is.na(CN2pre), CN2pre, CN2post)
+  )
+
+# treatment (post-pre)
+for (mt in 1:4) {
+  if (
+    !(str_glue("TM{mt}post") %in% colnames(df_el_prepost)) | 
+    !(str_glue("TM{mt}pre") %in% colnames(df_el_prepost))
+  ) {
+    next
+  }
+  df_el_prepost <-
+    escalc(
+      data = df_el_prepost,
+      measure = "SMCR",
+      m1i = df_el_prepost[, str_c("TM", mt, "post")] %>% unlist(),
+      m2i = df_el_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
+      sd1i = df_el_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
+      ni = df_el_prepost[, str_c("TN", mt, "post")] %>% unlist(),
+      ri = rep(0.5, 11),
+      var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
+    ) 
+}
+
+# control (post-pre)
+for (mc in 1:4) {
+  if (
+    !(str_glue("CM{mc}post") %in% colnames(df_el_prepost)) | 
+    !(str_glue("CM{mc}pre") %in% colnames(df_el_prepost))
+  ) {
+    next
+  }
+  df_el_prepost <-
+    escalc(
+      data = df_el_prepost,
+      measure = "SMCR",
+      m1i = df_el_prepost[, str_c("CM", mc, "post")] %>% unlist(),
+      m2i = df_el_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
+      sd1i = df_el_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
+      ni = df_el_prepost[, str_c("CN", mc, "post")] %>% unlist(),
+      ri = rep(0.5, 11),
+      var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
+    ) 
+}
+
+
+# ES and EV taken together
+for (m in 1:4) {
+  if (
+    !(str_glue("TES_TM{m}") %in% colnames(df_el_prepost)) | 
+    !(str_glue("TEV_TM{m}") %in% colnames(df_el_prepost)) |
+    !(str_glue("CES_CM{m}") %in% colnames(df_el_prepost)) | 
+    !(str_glue("CEV_CM{m}") %in% colnames(df_el_prepost))
+  ) {
+    next
+  }
+  # subtracting effect size
+  df_el_prepost[, str_c("ES_", m)] <- 
+    (df_el_prepost[, str_c("TES_TM", m)] %>% unlist()) -
+    (df_el_prepost[, str_c("CES_CM", m)] %>% unlist())
+  # adding variance
+  df_el_prepost[, str_c("EV_", m)] <- 
+    (df_el_prepost[, str_c("TEV_TM", m)] %>% unlist()) +
+    (df_el_prepost[, str_c("CEV_CM", m)] %>% unlist())
+}
+
+
+df_el_prepost <-
+  df_el_prepost %>% 
+  select(AUTYR, type, starts_with("ES")) %>% 
+  pivot_longer(cols = starts_with("ES"), names_to = "num", values_to = "ES", values_drop_na = T) %>%
+  mutate(num = str_sub(num, 4)) %>% 
+  left_join(
+    df_el_prepost %>% 
+      select(AUTYR, type, starts_with("EV")) %>% 
+      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
+      mutate(num = str_sub(num, 4)),
+    by = c("AUTYR", "type", "num")
+  ) %>% 
+  select(-num)
+```
+
+
+### EO
+
+EO Post:
+
+
+```{r}
+read_post_data <- function(type, category) {
+  read_xlsx(data_file, sheet = "ELs") %>% select(AUTYR = AUTH_YR, (ends_with(category) & contains(type))) %>% 
+    rename_at(vars(-AUTYR), ~ str_replace(., type, "")) %>%
+    rename_at(vars(-AUTYR), ~ str_replace(., category, "")) %>%
+    drop_na(AUTYR) %>%
+    filter(is.na(TM1pre)) %>% 
+    select_if(~ any(!is.na(.))) %>%
+    mutate(type = type) %>%
+    select(AUTYR, type, sort(current_vars()))
+}
+
+df_eo_post <-
+  bind_rows(
+    read_post_data("VR", "EO"),
+    read_post_data("VS", "EO"),
+    read_post_data("RR", "EO"),
+    read_post_data("RS", "EO")
+  )
+
+for (m in 1:4) {
+  if (
+    !(str_glue("TM{m}post") %in% colnames(df_eo_post)) | 
+    !(str_glue("CM{m}post") %in% colnames(df_eo_post))
+  ) {
+    next
+  }
+  df_eo_post <-
+    escalc(
+      data = df_eo_post,
+      measure = "SMD",
+      m1i = df_eo_post[, str_c("TM", m, "post")] %>% unlist(),
+      m2i = df_eo_post[, str_c("CM", m, "post")] %>% unlist(),
+      sd1i = df_eo_post[, str_c("TS", m, "post")] %>% unlist(),
+      sd2i = df_eo_post[, str_c("CS", m, "post")] %>% unlist(),
+      n1i = df_eo_post[, str_c("TN", m, "post")] %>% unlist(),
+      n2i = df_eo_post[, str_c("CN", m, "post")] %>% unlist(),
+      var.names = c(str_glue("ES_{m}"), str_glue("EV_{m}"))
+    ) 
+}
+
+df_eo_post <-
+  df_eo_post %>% 
+  select(AUTYR, type, starts_with("ES")) %>% 
+  pivot_longer(cols = starts_with("ES"), names_to = "num", values_to = "ES", values_drop_na = T) %>%
+  mutate(num = str_sub(num, 4)) %>% 
+  left_join(
+    df_eo_post %>% 
+      select(AUTYR, type, starts_with("EV")) %>% 
+      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
+      mutate(num = str_sub(num, 4)),
+    by = c("AUTYR", "type", "num")
+  ) %>% 
+  select(-num)
+```
+
+
+EO prepost:
+
+
+```{r}
+read_prepost_data <- function(type, category) {
+  read_xlsx(data_file, sheet = "ELs") %>% select(AUTYR = AUTH_YR, (ends_with(category) & contains(type))) %>% 
+    rename_at(vars(-AUTYR), ~ str_replace(., type, "")) %>%
+    rename_at(vars(-AUTYR), ~ str_replace(., category, "")) %>%
+    drop_na(AUTYR) %>%
+    filter(!is.na(TM1pre)) %>% 
+    select_if(~ any(!is.na(.))) %>%
+    mutate(type = type) %>%
+    select(AUTYR, type, sort(current_vars()))
+}
+
+df_eo_prepost <-
+  bind_rows(
+    read_prepost_data("VR", "EO"),
+    read_prepost_data("VS", "EO"),
+    read_prepost_data("RR", "EO"),
+    read_prepost_data("RS", "EO")
+  ) %>% 
+  mutate(
+    TN1post = if_else(is.na(TN1post) & !is.na(TN1pre), TN1pre, TN1post),
+    TN2post = if_else(is.na(TN2post) & !is.na(TN2pre), TN2pre, TN2post),
+    CN1post = if_else(is.na(CN1post) & !is.na(CN1pre), CN1pre, CN1post),
+    CN2post = if_else(is.na(CN2post) & !is.na(CN2pre), CN2pre, CN2post)
+  )
+
+# treatment (post-pre)
+for (mt in 1:4) {
+  if (
+    !(str_glue("TM{mt}post") %in% colnames(df_eo_prepost)) | 
+    !(str_glue("TM{mt}pre") %in% colnames(df_eo_prepost))
+  ) {
+    next
+  }
+  df_eo_prepost <-
+    escalc(
+      data = df_eo_prepost,
+      measure = "SMCR",
+      m1i = df_eo_prepost[, str_c("TM", mt, "post")] %>% unlist(),
+      m2i = df_eo_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
+      sd1i = df_eo_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
+      ni = df_eo_prepost[, str_c("TN", mt, "post")] %>% unlist(),
+      ri = rep(0.5, 11),
+      var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
+    ) 
+}
+
+# control (post-pre)
+for (mc in 1:4) {
+  if (
+    !(str_glue("CM{mc}post") %in% colnames(df_eo_prepost)) | 
+    !(str_glue("CM{mc}pre") %in% colnames(df_eo_prepost))
+  ) {
+    next
+  }
+  df_eo_prepost <-
+    escalc(
+      data = df_eo_prepost,
+      measure = "SMCR",
+      m1i = df_eo_prepost[, str_c("CM", mc, "post")] %>% unlist(),
+      m2i = df_eo_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
+      sd1i = df_eo_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
+      ni = df_eo_prepost[, str_c("CN", mc, "post")] %>% unlist(),
+      ri = rep(0.5, 11),
+      var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
+    ) 
+}
+
+
+# ES and EV taken together
+for (m in 1:4) {
+  if (
+    !(str_glue("TES_TM{m}") %in% colnames(df_eo_prepost)) | 
+    !(str_glue("TEV_TM{m}") %in% colnames(df_eo_prepost)) |
+    !(str_glue("CES_CM{m}") %in% colnames(df_eo_prepost)) | 
+    !(str_glue("CEV_CM{m}") %in% colnames(df_eo_prepost))
+  ) {
+    next
+  }
+  # subtracting effect size
+  df_eo_prepost[, str_c("ES_", m)] <- 
+    (df_eo_prepost[, str_c("TES_TM", m)] %>% unlist()) -
+    (df_eo_prepost[, str_c("CES_CM", m)] %>% unlist())
+  # adding variance
+  df_eo_prepost[, str_c("EV_", m)] <- 
+    (df_eo_prepost[, str_c("TEV_TM", m)] %>% unlist()) +
+    (df_eo_prepost[, str_c("CEV_CM", m)] %>% unlist())
+}
+
+
+df_eo_prepost <-
+  df_eo_prepost %>% 
+  select(AUTYR, type, starts_with("ES")) %>% 
+  pivot_longer(cols = starts_with("ES"), names_to = "num", values_to = "ES", values_drop_na = T) %>%
+  mutate(num = str_sub(num, 4)) %>% 
+  left_join(
+    df_eo_prepost %>% 
+      select(AUTYR, type, starts_with("EV")) %>% 
+      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
+      mutate(num = str_sub(num, 4)),
+    by = c("AUTYR", "type", "num")
+  ) %>% 
+  select(-num)
+```
+
+
+### Joining
+
+```{r}
+# EL
+df_el_clean <- 
+  bind_rows(df_el_post, df_el_prepost) %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%
+  arrange(type, stdid) %>%
+  select(type, stdid, AUTYR, ES, EV) %>%
+  unite("type_stdid", c("type", "stdid")) %>% 
+  agg(id = type_stdid, es = ES, var = EV, method = "BHHR", data = .) %>% 
+  separate(id, c("type", "stdid")) %>% 
+  rename(ES = es, EV = var)
+
+# EO
+df_eo_clean <- 
+  bind_rows(df_eo_post, df_eo_prepost) %>% 
+  left_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  ) %>%
+  arrange(type, stdid) %>%
+  select(type, stdid, AUTYR, ES, EV) %>%
+  unite("type_stdid", c("type", "stdid")) %>% 
+  agg(id = type_stdid, es = ES, var = EV, method = "BHHR", data = .) %>% 
+  separate(id, c("type", "stdid")) %>% 
+  rename(ES = es, EV = var)
+
+rm(df_el_post, df_el_prepost, df_eo_post,  df_eo_prepost)
+df_el_clean %>% DT::datatable()
+df_eo_clean %>% DT::datatable()
+```
+
+
+### Calculating Effect Sizes
+
+```{r}
+# EL
+df_el_clean %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_el_clean %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_el_clean %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_el_clean %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+# EO
+df_eo_clean %>%
+  filter(type == "VR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_eo_clean %>%
+  filter(type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_eo_clean %>%
+  filter(type == "RR") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_eo_clean %>%
+  filter(type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+```
+
+
+
 ## Publication Bias
 
 ### Funnel plots
@@ -1418,43 +1882,9 @@ df_r %>%
 
 
 
+MetaForest plots:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## MetaForest plots
-
-### Vocabulary
+Vocabulary
 
 ```{r, fig.retina = 4, eval = F}
 df_v %>%
@@ -1470,7 +1900,7 @@ df_v %>%
   plot()
 ```
 
-### Listening Comprehension
+Listening Comprehension
 
 ```{r, fig.retina = 4, eval = F}
 df_l %>%
@@ -1486,7 +1916,7 @@ df_l %>%
   plot()
 ```
 
-### Reading Comprehension
+Reading Comprehension
 
 ```{r, fig.retina = 4, eval = F}
 df_r %>%
