@@ -19,6 +19,7 @@ library(metafor)
 library(MAd)
 library(metaforest)
 library(dmetar)
+library(DT)
 
 # Parameters
 data_file <- here::here("data", "L&L Data Set Means SDs.xlsx")
