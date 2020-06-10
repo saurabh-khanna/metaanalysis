@@ -89,6 +89,16 @@ read_xlsx(data_file, sheet = "RS") %>%
       drop_na(AUTYR),
     by = "AUTYR"
   )
+
+read_xlsx(data_file, sheet = "DS") %>% 
+  select(AUTYR) %>% 
+  drop_na(AUTYR) %>% 
+  anti_join(
+    read_xlsx(data_file, sheet = "StudyChar") %>% 
+      select(AUTYR) %>% 
+      drop_na(AUTYR),
+    by = "AUTYR"
+  )
 ```
 
 All good!
@@ -112,6 +122,7 @@ df_post <-
     #"SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
+    "DS" = read_xlsx(data_file, sheet = "DS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "DS", "")),
     .id = "type"
   ) %>% 
   drop_na(AUTYR) %>%
@@ -120,7 +131,7 @@ df_post <-
   select(AUTYR, type, sort(current_vars()))
 
 
-for (m in 1:4) {
+for (m in 1:5) {
   if (
     !(str_glue("TM{m}post") %in% colnames(df_post)) | 
     !(str_glue("CM{m}post") %in% colnames(df_post))
@@ -171,10 +182,11 @@ df_prepost <-
     "LR" = read_xlsx(data_file, sheet = "LR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LR", "")),
     "LS" = read_xlsx(data_file, sheet = "LS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "LS", "")),
     "MR" = read_xlsx(data_file, sheet = "MR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MR", "")),
-   # "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
-   # "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
+  # "MS" = read_xlsx(data_file, sheet = "MS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "MS", "")),
+  # "SR" = read_xlsx(data_file, sheet = "SR") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SR", "")),
     "SS" = read_xlsx(data_file, sheet = "SS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "SS", "")),
     "AS" = read_xlsx(data_file, sheet = "AS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "AS", "")),
+    "DS" = read_xlsx(data_file, sheet = "DS") %>% rename_at(vars(-AUTYR), ~ str_replace(., "DS", "")),
     .id = "type"
   ) %>% 
   drop_na(AUTYR) %>%
@@ -205,7 +217,7 @@ for (mt in 1:4) {
       m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-      ri = rep(0.5, 85),
+      ri = rep(0.5, 94),
       var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
     ) 
 }
@@ -226,7 +238,7 @@ for (mc in 1:4) {
       m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-      ri = rep(0.5, 85),
+      ri = rep(0.5, 94),
       var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
     ) 
 }
@@ -379,6 +391,10 @@ df_r <- df_clean %>% filter(type %in% c("RR", "RS"))
 df_m <- df_clean %>% filter(type %in% c("MR", "MS"))
 df_s <- df_clean %>% filter(type %in% c("SR", "SS"))
 df_a <- df_clean %>% filter(type == "AS")
+df_d <- df_clean %>% filter(type == "DS")
+
+# changes for rebecca
+#df_v <- df_v %>% filter(!(stdid %in% c("Coyne10", "Coyne19", "Puhal", "Pullen")) | type != "VR")
 ```
 
 
@@ -662,6 +678,40 @@ df_a %>%
     header = T,
     pch = 21,
     bg = "grey",
+    lwd = 1.5
+  )
+```
+
+
+### Decoding measures
+
+
+```{r, fig.retina = 4}
+df_d %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_d %>%
+  left_join(read_xlsx(data_file, sheet = "citations") %>% distinct(stdid, citation), by = "stdid") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = citation.y
+  ) %>% 
+  forest(
+    order = "obs",
+    xlab = "Decoding Measures",
+    addcred = T, 
+    header = T,
+    pch = 21,
+    bg = "grey",
+    xlim = c(-5, 4),
     lwd = 1.5
   )
 ```
@@ -1878,16 +1928,11 @@ df_l %>%
 
 
 
+## MetaForest plots
 
+### Vocabulary
 
-
-
-
-MetaForest plots:
-
-Vocabulary
-
-```{r, fig.retina = 4, eval = F}
+```{r, fig.retina = 4}
 df_v %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -1901,9 +1946,9 @@ df_v %>%
   plot()
 ```
 
-Listening Comprehension
+### Listening Comprehension
 
-```{r, fig.retina = 4, eval = F}
+```{r, fig.retina = 4}
 df_l %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -1917,9 +1962,10 @@ df_l %>%
   plot()
 ```
 
-Reading Comprehension
 
-```{r, fig.retina = 4, eval = F}
+### Reading Comprehension
+
+```{r, fig.retina = 4}
 df_r %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
