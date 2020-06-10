@@ -310,7 +310,7 @@ df_append <-
     by = "AUTYR"
   ) %>%
   mutate(
-    LowIncome = recode(LowIncome, "0.0" = "0", "1.0" = "1", .default = NA_character_) %>% as.integer(),
+    LowIncome = recode(LowIncome, "0" = "0", "1" = "1", .default = NA_character_) %>% as.integer(),
     Hours = Hours %>% parse_number(),
     CONT = recode(CONT, "BAU" = "0", "ALT" = "1") %>% as.integer()
   ) %>%
@@ -1821,7 +1821,7 @@ df_r %>%
 
 ### P Curves
 
-```{r}
+```{r, error = T}
 # Vocabulary
 df_v %>% 
   mutate(
@@ -1857,22 +1857,22 @@ df_r %>%
   ) %>% 
   pcurve()
 
-# # Listening Comp
-# df_l %>% 
-#   mutate(
-#     SE = sqrt(EV)
-#   ) %>% 
-#   meta::metagen(
-#     ES,
-#     SE,
-#     data = .,
-#     comb.fixed = F,
-#     comb.random = T,
-#     method.tau = "REML",
-#     hakn = T,
-#     sm = "SMD"
-#   ) %>% 
-#   pcurve()
+# Listening Comp
+df_l %>%
+  mutate(
+    SE = sqrt(EV)
+  ) %>%
+  meta::metagen(
+    ES,
+    SE,
+    data = .,
+    comb.fixed = F,
+    comb.random = T,
+    method.tau = "REML",
+    hakn = T,
+    sm = "SMD"
+  ) %>%
+  pcurve()
 ```
 
 
