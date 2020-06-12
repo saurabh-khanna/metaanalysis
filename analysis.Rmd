@@ -217,7 +217,7 @@ for (mt in 1:4) {
       m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-      ri = rep(0.5, 94),
+      ri = rep(0.5, 95),
       var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
     ) 
 }
@@ -238,7 +238,7 @@ for (mc in 1:4) {
       m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-      ri = rep(0.5, 94),
+      ri = rep(0.5, 95),
       var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
     ) 
 }
@@ -394,7 +394,13 @@ df_a <- df_clean %>% filter(type == "AS")
 df_d <- df_clean %>% filter(type == "DS")
 
 # changes for rebecca
-#df_v <- df_v %>% filter(!(stdid %in% c("Coyne10", "Coyne19", "Puhal", "Pullen")) | type != "VR")
+# df_v %>% filter(stdid %in% c("Coyne10", "Coyne19", "Puhal", "Pullen"), type == "VR") %>% rma(
+#     yi = ES, 
+#     vi = EV, 
+#     data = ., 
+#     method = "REML",
+#     slab = citation
+#   )
 ```
 
 
@@ -575,14 +581,14 @@ forest(
   xlab = "Reading Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 35),
-  rows = c(3:19, 27:29),
+  ylim = c(-1, 36),
+  rows = c(3:19, 27:30),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-3.6, c(21, 31), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-3.6, c(21, 32), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 24, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 ```
@@ -1032,6 +1038,7 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ EL)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Hours)
@@ -1058,6 +1065,7 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ EL + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TDD + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TTEC + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TSTR + type)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ TWRT + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ CONT + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Duration + type)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", mods = ~ Hours + type)
@@ -1085,6 +1093,7 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mod
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VR"), mods = ~ Hours)
@@ -1112,6 +1121,7 @@ rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mod
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_v, method = "REML", subset = (type == "VS"), mods = ~ Hours)
@@ -1141,6 +1151,7 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ EL)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Hours)
@@ -1167,6 +1178,7 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ EL + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TDD + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TTEC + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TSTR + type)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ TWRT + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ CONT + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Duration + type)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ Hours + type)
@@ -1194,6 +1206,7 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mod
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LR"), mods = ~ Hours)
@@ -1221,6 +1234,7 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mod
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_l, method = "REML", subset = (type == "LS"), mods = ~ Hours)
@@ -1249,6 +1263,7 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ EL)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Hours)
@@ -1275,6 +1290,7 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ EL + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TDD + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TTEC + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TSTR + type)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ TWRT + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ CONT + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Duration + type)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", mods = ~ Hours + type)
@@ -1302,6 +1318,7 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mod
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RR"), mods = ~ Hours)
@@ -1329,6 +1346,7 @@ rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mod
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TDD)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TTEC)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TSTR)
+rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ TWRT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ CONT)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ Duration)
 rma(yi = ES, vi = EV, data = df_r, method = "REML", subset = (type == "RS"), mods = ~ Hours)
