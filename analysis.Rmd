@@ -20,6 +20,7 @@ library(MAd)
 library(metaforest)
 library(dmetar)
 library(DT)
+library(robvis)
 
 # Parameters
 data_file <- here::here("data", "L&L Data Set Means SDs.xlsx")
@@ -217,7 +218,7 @@ for (mt in 1:4) {
       m2i = df_prepost[, str_c("TM", mt, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("TS", mt, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("TN", mt, "post")] %>% unlist(),
-      ri = rep(0.5, 95),
+      ri = rep(0.5, 94),
       var.names = c(str_glue("TES_TM{mt}"), str_glue("TEV_TM{mt}"))
     ) 
 }
@@ -238,7 +239,7 @@ for (mc in 1:4) {
       m2i = df_prepost[, str_c("CM", mc, "pre")] %>% unlist(),
       sd1i = df_prepost[, str_c("CS", mc, "pre")] %>% unlist(),
       ni = df_prepost[, str_c("CN", mc, "post")] %>% unlist(),
-      ri = rep(0.5, 95),
+      ri = rep(0.5, 94),
       var.names = c(str_glue("CES_CM{mc}"), str_glue("CEV_CM{mc}"))
     ) 
 }
@@ -318,7 +319,8 @@ df_append <-
   bind_rows(df_post, df_prepost, df_es_direct) %>% 
   left_join(
     read_xlsx(data_file, sheet = "StudyChar") %>% 
-      drop_na(AUTYR),
+      drop_na(AUTYR) %>% 
+      fill(Performance, Detection, Attrition, Reporting),
     by = "AUTYR"
   ) %>%
   mutate(
@@ -372,7 +374,23 @@ df_clean <-
     citation = if_else(str_detect(type, "S$"), str_c(citation, " "), citation)
   )
 
-rm(df_post, df_prepost, df_es_direct, df_append, cor_es)
+  
+df_append %>% 
+  mutate(Selection = if_else(RCT == 1, "L", "H")) %>% 
+  distinct(stdid, Selection, Performance, Detection, Attrition, Reporting) %>%
+  select(stdid, Selection, Performance, Detection, Attrition, Reporting) %>%
+  rename(Study = stdid, `Selection bias` = Selection, `Performance bias` = Performance, `Detection bias` = Detection, `Attrition bias` = Attrition, `Reportiong bias` = Reporting) %>%
+  left_join(
+    cor_es %>%
+      group_by(stdid) %>%
+      summarise(EV = mean(EV, na.rm = T)) %>%
+      transmute(Study = stdid, Overall = "L", Weight = 1/EV),
+    by = "Study"
+  )
+
+
+
+rm(df_post, df_prepost, df_es_direct)
 df_clean %>% summary()
 df_clean %>% datatable()
 ```
@@ -473,6 +491,7 @@ addpoly(model_3, row = 1.5, cex = 1.25, col = "white", lwd = 3)
 
 
 ```{r, out.width="100%", out.height="100%", fig.asp=2}
+# Combined
 model_1 <-
   df_l %>%
   arrange(desc(type), desc(ES)) %>%  
@@ -484,6 +503,7 @@ model_1 <-
     slab = citation
   )
 
+# Custom (all distal)
 model_2 <-
   df_l %>%
   rma(
@@ -495,6 +515,7 @@ model_2 <-
     slab = stdid
   )
 
+# Standardized
 model_3 <-
   df_l %>%
   rma(
@@ -547,6 +568,7 @@ model_1 <-
     slab = citation
   )
 
+# Custom (all)
 model_2 <-
   df_r %>%
   rma(
@@ -558,7 +580,32 @@ model_2 <-
     slab = stdid
   )
 
+# Custom (proximal)
 model_3 <-
+  df_r %>%
+  filter(type == "RR", stdid != "Silver17a4") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+# Custom (distal)
+model_4 <-
+  df_r %>%
+  filter(type == "RR", stdid == "Silver17a4") %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+# Standardized
+model_5 <-
   df_r %>%
   rma(
     yi = ES, 
@@ -569,9 +616,11 @@ model_3 <-
     slab = stdid
   )
 
-model_1
-model_2
-model_3
+model_1  #overall
+model_2  #custom
+model_3  #proximal custom
+model_4  #distal custom
+model_5  #standardized
 df_r %>% count(type)
 ```
 
@@ -581,16 +630,16 @@ forest(
   xlab = "Reading Comprehension",
   addcred = T, 
   header = T,
-  ylim = c(-1, 36),
-  rows = c(3:19, 27:30),
+  ylim = c(-1, 35),
+  rows = c(3:19, 27:29),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 op <- par(cex = 0.75, font = 4)
-text(-3.6, c(21, 32), pos = 4, c("Standardized Measure", "Custom Measure"))
+text(-3.6, c(21, 31), pos = 4, c("Standardized Measure", "Custom Measure"))
 addpoly(model_2, row = 24, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_5, row = 1, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
@@ -598,6 +647,28 @@ addpoly(model_3, row = 1, cex = 1.25, col = "white", lwd = 3)
 
 ```{r, fig.retina = 4}
 df_m %>%
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+# Custom (distal)
+df_m %>%
+  filter(stdid != "Brimo") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+# Custom (proximal)
+df_m %>%
+  filter(stdid == "Brimo") %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -1815,6 +1886,63 @@ df_eo_clean %>%
     data = ., 
     method = "REML"
   )
+```
+
+```{r}
+# Combined
+# EL
+df_el_clean %>%
+  filter(type == "VR" | type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_el_clean %>%
+  filter(type == "RR" | type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+# EO
+df_eo_clean %>%
+  filter(type == "VR" | type == "VS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_eo_clean %>%
+  filter(type == "RR" | type == "RS") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+
+# # Difference
+# bind_rows(
+#   df_el_clean %>% mutate(els = "EL"),
+#   df_eo_clean %>% mutate(els = "EO")
+# ) %>% 
+#   mutate(els = els %>% as_factor()) %>% 
+#   filter(type == "RR"| type == "RS") %>% 
+#   rma(
+#     yi = ES, 
+#     vi = EV, 
+#     data = .,
+#     mods = ~ els,
+#     method = "REML"
+#   )
 ```
 
 
