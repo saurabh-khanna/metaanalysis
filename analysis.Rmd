@@ -20,6 +20,7 @@ library(MAd)
 library(metaforest)
 library(dmetar)
 library(DT)
+library(robumeta)
 
 # Parameters
 data_file <- here::here("data", "L&L Data Set Means SDs.xlsx")
@@ -2117,11 +2118,17 @@ df_r %>%
 ```
 
 
-### Exclude outliers
+### Capping outliers
 
 ```{r}
 df_v %>%
-  filter(., !(ES %in% boxplot(.$ES, plot = FALSE)$out)) %>% 
+  mutate(
+    ES = if_else(
+      ES %in% boxplot(.$ES, plot = FALSE)$out, 
+      quantile(.$ES, probs = 0.75, na.rm = T) + 1.5 * IQR(.$ES, na.rm = T), 
+      ES
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2130,7 +2137,13 @@ df_v %>%
   )
 
 df_l %>%
-  filter(., !(ES %in% boxplot(.$ES, plot = FALSE)$out)) %>% 
+  mutate(
+    ES = if_else(
+      ES %in% boxplot(.$ES, plot = FALSE)$out, 
+      quantile(.$ES, probs = 0.75, na.rm = T) + 1.5 * IQR(.$ES, na.rm = T), 
+      ES
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2138,8 +2151,15 @@ df_l %>%
     method = "REML"
   )
 
+
 df_r %>%
-  filter(., !(ES %in% boxplot(.$ES, plot = FALSE)$out)) %>% 
+  mutate(
+    ES = if_else(
+      ES %in% boxplot(.$ES, plot = FALSE)$out, 
+      quantile(.$ES, probs = 0.75, na.rm = T) + 1.5 * IQR(.$ES, na.rm = T), 
+      ES
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2149,9 +2169,40 @@ df_r %>%
 ```
 
 
-### Change pre/post correlations
+### Change within study correlations
 
 
+```{r}
+df_v %>% 
+  robu(
+    formula = ES ~ 1, 
+    var.eff.size = EV, 
+    studynum = stdid,
+    data = ., 
+    modelweights = "CORR"
+    ) %>% 
+  sensitivity()
+
+df_r %>% 
+  robu(
+    formula = ES ~ 1, 
+    var.eff.size = EV, 
+    studynum = stdid,
+    data = ., 
+    modelweights = "CORR"
+    ) %>% 
+  sensitivity()
+
+df_l %>% 
+  robu(
+    formula = ES ~ 1, 
+    var.eff.size = EV, 
+    studynum = stdid,
+    data = ., 
+    modelweights = "CORR"
+    ) %>% 
+  sensitivity()
+```
 
 
 ## MetaForest plots
