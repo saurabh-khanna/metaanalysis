@@ -601,7 +601,7 @@ rob_summary <-
       if (weighted == FALSE) {
         data[, ncol(data)] <- rep(1, length(nrow(data)))
       } else {
-        if (is.numeric(data[2, ncol(data)]) == FALSE) {
+        if (is.numeric(data[[2, ncol(data)]]) == FALSE) {
           stop(
             "Error. The final column does not seem to contain numeric values (expected for weights)."
           )

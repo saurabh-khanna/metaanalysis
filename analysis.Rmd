@@ -20,7 +20,6 @@ library(MAd)
 library(metaforest)
 library(dmetar)
 library(DT)
-library(robvis)
 
 # Parameters
 data_file <- here::here("data", "L&L Data Set Means SDs.xlsx")
@@ -314,7 +313,7 @@ df_es_direct <-
 
 ### Combining all
 
-```{r}
+```{r, fig.retina=4}
 df_append <- 
   bind_rows(df_post, df_prepost, df_es_direct) %>% 
   left_join(
@@ -373,22 +372,6 @@ df_clean <-
     type = type %>% as_factor(),
     citation = if_else(str_detect(type, "S$"), str_c(citation, " "), citation)
   )
-
-  
-df_append %>% 
-  mutate(Selection = if_else(RCT == 1, "L", "H")) %>% 
-  distinct(stdid, Selection, Performance, Detection, Attrition, Reporting) %>%
-  select(stdid, Selection, Performance, Detection, Attrition, Reporting) %>%
-  rename(Study = stdid, `Selection bias` = Selection, `Performance bias` = Performance, `Detection bias` = Detection, `Attrition bias` = Attrition, `Reportiong bias` = Reporting) %>%
-  left_join(
-    cor_es %>%
-      group_by(stdid) %>%
-      summarise(EV = mean(EV, na.rm = T)) %>%
-      transmute(Study = stdid, Overall = "L", Weight = 1/EV),
-    by = "Study"
-  )
-
-
 
 rm(df_post, df_prepost, df_es_direct)
 df_clean %>% summary()
@@ -1957,6 +1940,7 @@ df_v %>%
     yi = ES, 
     vi = EV, 
     data = ., 
+    mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>% 
   funnel(xlab = "Vocabulary Effect Size")
@@ -1966,6 +1950,7 @@ df_l %>%
     yi = ES, 
     vi = EV, 
     data = ., 
+    mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>% 
   funnel(xlab = "Listening Comprehension Effect Size")
@@ -1974,7 +1959,8 @@ df_r %>%
   rma(
     yi = ES, 
     vi = EV, 
-    data = ., 
+    data = .,
+    mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>% 
   funnel(xlab = "Reading Comprehension Effect Size")
@@ -1989,6 +1975,7 @@ df_v %>%
     yi = ES, 
     vi = EV, 
     data = ., 
+    mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>%
   regtest(model = "rma", predictor = "sei")
@@ -1999,6 +1986,7 @@ df_l %>%
     yi = ES, 
     vi = EV, 
     data = ., 
+    mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>%
   regtest(model = "rma", predictor = "sei")
@@ -2009,6 +1997,7 @@ df_r %>%
     yi = ES, 
     vi = EV, 
     data = ., 
+    mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>% 
   regtest(model = "rma", predictor = "sei")
@@ -2072,13 +2061,104 @@ df_l %>%
 ```
 
 
+## Risk of bias analysis
+
+```{r, fig.retina=4}
+source("rob_summary.R")
+df_append %>% 
+  mutate(Selection = if_else(RCT == 1, "Low", "High")) %>% 
+  distinct(stdid, Selection, Performance, Detection, Attrition, Reporting) %>%
+  select(stdid, Selection, Performance, Detection, Attrition, Reporting) %>%
+  mutate_at(vars(Selection:Reporting), ~ recode(., "H" = "High", "L" = "Low", "U" = "Unclear")) %>%
+  mutate_at(vars(Selection:Reporting), ~ factor(., levels = c("High", "Low", "Unclear"), ordered = T)) %>%
+  rename(Study = stdid, `Selection bias` = Selection, `Performance bias` = Performance, `Detection bias` = Detection, `Attrition bias` = Attrition, `Reporting bias` = Reporting) %>%
+  left_join(
+    cor_es %>%
+      group_by(stdid) %>%
+      summarise(EV = mean(EV, na.rm = T)) %>%
+      transmute(Study = stdid, Overall = factor("Low"), Weight = 1/EV %>% as.numeric()),
+    by = "Study"
+  ) %>%
+  mutate(Study = Study %>% as_factor()) %>% 
+  rob_summary(tool = "ROB1")
+```
+
+## Sensitivity analyses
+
+### Exclude high selection risk studies
+
+```{r}
+df_v %>%
+  filter(design == "RCT") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_l %>%
+  filter(design == "RCT") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_r %>%
+  filter(design == "RCT") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+```
+
+
+### Exclude outliers
+
+```{r}
+df_v %>%
+  filter(., !(ES %in% boxplot(.$ES, plot = FALSE)$out)) %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_l %>%
+  filter(., !(ES %in% boxplot(.$ES, plot = FALSE)$out)) %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+
+df_r %>%
+  filter(., !(ES %in% boxplot(.$ES, plot = FALSE)$out)) %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML"
+  )
+```
+
+
+### Change pre/post correlations
+
+
 
 
 ## MetaForest plots
 
 ### Vocabulary
 
-```{r, fig.retina = 4}
+```{r, fig.retina = 4, eval = F}
 df_v %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -2094,7 +2174,7 @@ df_v %>%
 
 ### Listening Comprehension
 
-```{r, fig.retina = 4}
+```{r, fig.retina = 4, eval = F}
 df_l %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -2111,7 +2191,7 @@ df_l %>%
 
 ### Reading Comprehension
 
-```{r, fig.retina = 4}
+```{r, fig.retina = 4, eval = F}
 df_r %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
