@@ -2080,7 +2080,7 @@ df_append %>%
       transmute(Study = stdid, Overall = factor("Low"), Weight = 1/EV %>% as.numeric()),
     by = "Study"
   ) %>%
-  mutate(Study = Study %>% as_factor()) %>% 
+  mutate(Study = Study %>% as_factor()) %>%
   rob_summary(tool = "ROB1")
 ```
 
@@ -2089,8 +2089,8 @@ df_append %>%
 ### Exclude high selection risk studies
 
 ```{r}
-df_v %>%
-  filter(design == "RCT") %>% 
+df_append %>%
+  filter(type %in% c("VR", "VS")) %>% 
   rma(
     yi = ES, 
     vi = EV, 

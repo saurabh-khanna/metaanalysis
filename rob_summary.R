@@ -663,11 +663,11 @@ rob_summary <-
           "Risk of Bias",
           values = c(l = low_colour,
                      s = concerns_colour, h = high_colour),
-          labels = c(h = "  High risk of bias  ",
-                     s = "  Some concerns      ",
-                     l = "  Low risk of bias   ")
+          labels = c(h = "  High risk of bias ",
+                     s = "  Uncertain risk of bias   ",
+                     l = "  Low risk of bias  ")
         ) +
-        ggplot2::scale_y_continuous(labels = scales::percent) +
+        ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 1), breaks = scales::breaks_width(0.1)) +
         ggplot2::theme(
           axis.title.x = ggplot2::element_blank(),
           axis.title.y = ggplot2::element_blank(),
