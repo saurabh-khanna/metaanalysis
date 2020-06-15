@@ -1943,8 +1943,8 @@ df_v %>%
     data = ., 
     mods = ~ type * grouping * TMULT,
     method = "REML"
-  ) %>% 
-  funnel(xlab = "Vocabulary Effect Size")
+  ) %>%
+  funnel(xlab = "Vocabulary Effect Size", pch = 21, bg ="grey")
 
 df_l %>%
   rma(
@@ -1954,7 +1954,7 @@ df_l %>%
     mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>% 
-  funnel(xlab = "Listening Comprehension Effect Size")
+  funnel(xlab = "Listening Comprehension Effect Size", pch = 21, bg ="grey")
 
 df_r %>%
   rma(
@@ -1964,7 +1964,7 @@ df_r %>%
     mods = ~ type * grouping * TMULT,
     method = "REML"
   ) %>% 
-  funnel(xlab = "Reading Comprehension Effect Size")
+  funnel(xlab = "Reading Comprehension Effect Size", pch = 21, bg ="grey")
 ```
 
 ### Egger's Test
@@ -2089,8 +2089,8 @@ df_append %>%
 ### Exclude high selection risk studies
 
 ```{r}
-df_append %>%
-  filter(type %in% c("VR", "VS")) %>% 
+df_v %>%
+  filter(design == "RCT") %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2173,7 +2173,19 @@ df_r %>%
 
 
 ```{r}
-df_v %>% 
+df_append %>% 
+  filter(type %in% c("VR", "VS")) %>% 
+  robu(
+    formula = ES ~ 1, 
+    var.eff.size = EV, 
+    studynum = stdid,
+    data = ., 
+    modelweights = "CORR"
+    ) %>% 
+  sensitivity()
+  
+df_append %>% 
+  filter(type %in% c("RR", "RS")) %>% 
   robu(
     formula = ES ~ 1, 
     var.eff.size = EV, 
@@ -2183,24 +2195,15 @@ df_v %>%
     ) %>% 
   sensitivity()
 
-df_r %>% 
+df_append %>% 
+  filter(type %in% c("LR", "LS")) %>% 
   robu(
     formula = ES ~ 1, 
     var.eff.size = EV, 
     studynum = stdid,
     data = ., 
     modelweights = "CORR"
-    ) %>% 
-  sensitivity()
-
-df_l %>% 
-  robu(
-    formula = ES ~ 1, 
-    var.eff.size = EV, 
-    studynum = stdid,
-    data = ., 
-    modelweights = "CORR"
-    ) %>% 
+    ) %>%
   sensitivity()
 ```
 
@@ -2209,7 +2212,7 @@ df_l %>%
 
 ### Vocabulary
 
-```{r, fig.retina = 4, eval = F}
+```{r, fig.retina = 4}
 df_v %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -2225,7 +2228,7 @@ df_v %>%
 
 ### Listening Comprehension
 
-```{r, fig.retina = 4, eval = F}
+```{r, fig.retina = 4}
 df_l %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
@@ -2242,7 +2245,7 @@ df_l %>%
 
 ### Reading Comprehension
 
-```{r, fig.retina = 4, eval = F}
+```{r, fig.retina = 4}
 df_r %>%
   rename(vi = EV) %>%
   mutate(stdid = stdid %>% as_factor()) %>% 
