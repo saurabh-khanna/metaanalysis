@@ -36,7 +36,6 @@ df_raw <-
     "LRP" = read_xlsx(data_file, sheet = "Linguistic Comprehension-LRP") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "LRP", "")),
     "CSN" = read_xlsx(data_file, sheet = "Reading Comprehension-CSN") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "CSN", "")),
     "CRD" = read_xlsx(data_file, sheet = "Reading Comprehension-CRD") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "CRD", "")),
-    #"CRP" = read_xlsx(data_file, sheet = "Reading Comprehension-CRP") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "CRP", "")),
     "WCSN" = read_xlsx(data_file, sheet = "Writing Conventions-WCSN") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "WCSN", "")),
     "WCRD" = read_xlsx(data_file, sheet = "Writing Conventions-WCRD") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "WCRD", "")),
     "WPSN" = read_xlsx(data_file, sheet = "Writing Proficiency-WPSN") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "WPSN", "")),
@@ -48,6 +47,10 @@ df_raw <-
   remove_empty() %>%
   select(-AUTYR) %>% 
   select(study_id, type, sort(current_vars()))
+  # mutate(
+  #   type = if_else(type == "WCSN", "DSN", type),
+  #   type = if_else(type == "WCRD", "DRD", type),
+  # )
 
 # remove redundant rows
 df_raw$na_count <- apply(df_raw, 1, function(x) sum(is.na(x)))
@@ -74,7 +77,7 @@ df_direct_es <-
 # general checks
 df_raw %>% glimpse()
 df_raw %>% count(type)
-df_raw %>% summarize_at(vars(1, 2, 243), ~ mean(is.na(.)))
+df_raw %>% summarize_at(vars(1, 2, 198), ~ mean(is.na(.)))
 df_raw %>% get_dupes(type, study_id)
 ```
 
@@ -95,7 +98,12 @@ df_raw <-
   arrange(type, study_id, AUTYR)
 
 df_raw %>% 
-  count(AUTYR, type) %>% 
+  mutate(
+    type = if_else(type == "WCSN", "DSN", type),
+    type = if_else(type == "WCRD", "DRD", type),
+  ) %>% 
+  distinct(AUTYR, type) %>% 
+  arrange(AUTYR, type) %>% 
   group_by(AUTYR) %>% 
   mutate(n = row_number()) %>%
   ungroup() %>% 
@@ -157,13 +165,14 @@ for (a in 1:9) {
 
 df_post <-
   df_post %>% 
-  select(study_id, AUTYR, type, starts_with("ES")) %>% 
+  select(study_id, AUTYR, type, starts_with("ES")) %>%
   pivot_longer(cols = starts_with("ES"), names_to = "num", values_to = "ES", values_drop_na = T) %>%
   mutate(num = str_sub(num, 3)) %>% 
   left_join(
     df_post %>% 
       select(study_id, AUTYR, type, starts_with("EV")) %>% 
-      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% mutate(num = str_sub(num, 3)),
+      pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
+      mutate(num = str_sub(num, 3)),
     by = c("study_id", "AUTYR", "type", "num")
   )
 ```
@@ -207,7 +216,7 @@ for (a in 1:9) {
           m2i = df_prepost[, str_c("T", t, a, "MPre")] %>% unlist(),
           sd1i = df_prepost[, str_c("T", t, a, "SPre")] %>% unlist(),
           ni = df_prepost[, str_c("T", t, a, "NPost")] %>% unlist(),
-          ri = rep(0.5, 125),
+          ri = rep(0.5, 123),
           var.names = c(str_glue("TES{a}_{t}"), str_glue("TEV{a}_{t}"))
         )
     }
@@ -226,7 +235,7 @@ for (a in 1:9) {
           m2i = df_prepost[, str_c("C", c, a, "MPre")] %>% unlist(),
           sd1i = df_prepost[, str_c("C", c, a, "SPre")] %>% unlist(),
           ni = df_prepost[, str_c("C", c, a, "NPost")] %>% unlist(),
-          ri = rep(0.5, 125),
+          ri = rep(0.5, 123),
           var.names = c(str_glue("CES{a}_{c}"), str_glue("CEV{a}_{c}"))
         )
     }
@@ -297,17 +306,10 @@ df_es_direct <- tibble()
 
 df_append <- 
   bind_rows(df_es_calc, df_es_direct) %>% 
-  # left_join(
-  #   read_xlsx(data_file, sheet = "StudyChar") %>% 
-  #     drop_na(AUTYR) %>% 
-  #     fill(Performance, Detection, Attrition, Reporting),
-  #   by = "AUTYR"
-  # ) %>%
-  # mutate(
-  #   LowIncome = recode(LowIncome, "0" = "0", "1" = "1", .default = NA_character_) %>% as.integer(),
-  #   Hours = Hours %>% parse_number(),
-  #   CONT = recode(CONT, "BAU" = "0", "ALT" = "1") %>% as.integer()
-  # ) %>%
+  mutate(
+    type = if_else(type == "WCSN", "DSN", type),  # fixing WCSN --> DSN
+    type = if_else(type == "WCRD", "DRD", type),  # fixing WCRD --> DRD
+  ) %>% 
   arrange(type, study_id) %>%
   select(type, stdid = study_id, AUTYR, everything())
 
@@ -325,8 +327,11 @@ df_clean <-
   left_join(cor_es, by = c("type", "stdid")) %>% 
   mutate_if(is.character, ~ str_replace_all(., '[\n\t]', '')) %>% 
   arrange(type, stdid)
+```
 
 
+
+```{r}
 # df_clean <-
 #   df_append %>%
 #   group_by(type, stdid) %>%
@@ -387,9 +392,9 @@ df_clean %>%
 # df_clean %>% count(type, stdid)
 
 df_c <- df_clean %>% filter(type %in% c("CRD", "CSN"))
-df_d <- df_clean %>% filter(type %in% c("DRD", "DRP", "DSN"))
+df_d <- df_clean %>% filter(type %in% c("DRD", "DRP", "DSN"), stdid != "38")
 df_l <- df_clean %>% filter(type %in% c("LRD", "LRP", "LSN"))
-df_w <- df_clean %>% filter(type %in% c("WCRD", "WCSN", "WPRD", "WPSN"))
+df_w <- df_clean %>% filter(type %in% c("WPRD", "WPSN"))
 
 # changes for rebecca
 # df_v %>% filter(stdid %in% c("Coyne10", "Coyne19", "Puhal", "Pullen"), type == "VR") %>% rma(
@@ -411,33 +416,21 @@ df_w <- df_clean %>% filter(type %in% c("WCRD", "WCSN", "WPRD", "WPSN"))
 
 #### Decoding
 
-Forest plot:
 
-```{r, fig.retina = 4, fig.asp=1.8}
-df_d %>%
+```{r}
+model_d <-
+  df_d %>%
+  arrange(desc(type), desc(ES)) %>% 
   rma(
     yi = ES, 
     vi = EV, 
     data = ., 
     method = "REML",
     slab = AUTYR
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Decoding",
-    addcred = T, 
-    header = T,
-    pch = 21,
-    bg = "grey",
-    lwd = 1.5
   )
-```
 
-
-DRD:
-
-```{r}
-df_d %>%
+model_drd <-
+  df_d %>%
   filter(type == "DRD") %>% 
   rma(
     yi = ES, 
@@ -446,12 +439,9 @@ df_d %>%
     method = "REML",
     slab = stdid
   )
-```
 
-DRP:
-
-```{r}
-df_d %>%
+model_drp <-
+  df_d %>%
   filter(type == "DRP") %>% 
   rma(
     yi = ES, 
@@ -460,12 +450,9 @@ df_d %>%
     method = "REML",
     slab = stdid
   )
-```
 
-DSN:
-
-```{r}
-df_d %>%
+model_dsn <-
+  df_d %>%
   filter(type == "DSN") %>% 
   rma(
     yi = ES, 
@@ -474,7 +461,34 @@ df_d %>%
     method = "REML",
     slab = stdid
   )
+
+#df_d %>% arrange(type, ES)
 ```
+
+
+
+```{r, fig.retina = 4, fig.asp=1.8}
+forest(
+  model_d,
+  xlab = "Decoding",
+  addcred = T, 
+  header = T,
+  #xlim = c(-15, 18),
+  ylim = c(-1, 67),
+  rows = c(4:20, 27:30, 38:61),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+
+op <- par(cex = 0.75, font = 4)
+
+text(-12, c(22, 32, 63), pos = 4, c("Standardized", "Reseacher Developed (Proximal)", "Reseacher Developed (Distal)"))
+addpoly(model_drd, row = 36, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_drp, row = 25, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_dsn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
+```
+
 
 
 ---
@@ -483,33 +497,20 @@ df_d %>%
 
 #### Reading Comprehension
 
-Forest plot:
-
-```{r, fig.retina = 4, fig.asp=1.5}
-df_c %>%
+```{r}
+model_c <-
+  df_c %>%
+  arrange(desc(type), desc(ES)) %>% 
   rma(
     yi = ES, 
     vi = EV, 
     data = ., 
     method = "REML",
     slab = AUTYR
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Reading Comprehension",
-    addcred = T, 
-    header = T,
-    pch = 21,
-    bg = "grey",
-    lwd = 1.5
   )
-```
 
-
-CRD:
-
-```{r}
-df_c %>%
+model_crd <-
+  df_c %>%
   filter(type == "CRD") %>% 
   rma(
     yi = ES, 
@@ -518,12 +519,9 @@ df_c %>%
     method = "REML",
     slab = stdid
   )
-```
 
-CSN:
-
-```{r}
-df_c %>%
+model_csn <-
+  df_c %>%
   filter(type == "CSN") %>% 
   rma(
     yi = ES, 
@@ -532,7 +530,32 @@ df_c %>%
     method = "REML",
     slab = stdid
   )
+
+#df_c %>% arrange(type, ES)
 ```
+
+
+```{r, fig.retina = 4, fig.asp=1.5}
+forest(
+  model_c,
+  xlab = "Reading Comprehension",
+  addcred = T, 
+  header = T,
+  #xlim = c(-15, 18),
+  ylim = c(-1, 48),
+  rows = c(4:26, 33:42),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+
+op <- par(cex = 0.75, font = 4)
+
+text(-7.4, c(28, 44), pos = 4, c("Standardized", "Reseacher Developed (Distal)"))
+addpoly(model_crd, row = 31, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_csn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
+```
+
 
 
 ---
@@ -542,34 +565,20 @@ df_c %>%
 
 #### Language Comprehension
 
-Forest plot:
-
-```{r, fig.retina = 4, fig.asp=1.2}
-df_l %>%
+```{r}
+model_l <-
+  df_l %>%
+  arrange(desc(type), desc(ES)) %>% 
   rma(
     yi = ES, 
     vi = EV, 
     data = ., 
     method = "REML",
     slab = AUTYR
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Language Comprehension",
-    addcred = T, 
-    header = T,
-    pch = 21,
-    bg = "grey",
-    lwd = 1.5
   )
-```
 
-
-
-LRD:
-
-```{r}
-df_l %>%
+model_lrd <-
+  df_l %>%
   filter(type == "LRD") %>% 
   rma(
     yi = ES, 
@@ -578,12 +587,9 @@ df_l %>%
     method = "REML",
     slab = stdid
   )
-```
 
-LRP:
-
-```{r}
-df_l %>%
+model_lrp <-
+  df_l %>%
   filter(type == "LRP") %>% 
   rma(
     yi = ES, 
@@ -592,12 +598,9 @@ df_l %>%
     method = "REML",
     slab = stdid
   )
-```
 
-LSN:
-
-```{r}
-df_l %>%
+model_lsn <-
+  df_l %>%
   filter(type == "LSN") %>% 
   rma(
     yi = ES, 
@@ -606,88 +609,57 @@ df_l %>%
     method = "REML",
     slab = stdid
   )
+
+# df_l %>% arrange(type, ES)
+# df_l %>% count(type)
 ```
+
+
+```{r, fig.retina = 4, fig.asp=1.2}
+forest(
+  model_l,
+  xlab = "Language Comprehension",
+  addcred = T, 
+  header = T,
+  xlim = c(-10, 10),
+  ylim = c(-1, 47),
+  rows = c(4:12, 18:29, 36:41),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+
+op <- par(cex = 0.75, font = 4)
+
+text(-10, c(14, 31, 43), pos = 4, c("Standardized", "Reseacher Developed (Proximal)", "Reseacher Developed (Distal)"))
+addpoly(model_lrd, row = 33.5, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_lrp, row = 16.5, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_lsn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
+```
+
+
 
 
 ---
 
 <br/>
 
-#### Writing
+#### Writing Proficiency
 
-Forest plot:
-
-```{r, fig.retina = 4, fig.asp=1.2}
-df_w %>%
+```{r}
+model_w <-
+  df_w %>%
+  arrange(desc(type), desc(ES)) %>% 
   rma(
     yi = ES, 
     vi = EV, 
     data = ., 
     method = "REML",
     slab = AUTYR
-  ) %>% 
-  forest(
-    order = "obs",
-    xlab = "Writing",
-    addcred = T, 
-    header = T,
-    pch = 21,
-    bg = "grey",
-    lwd = 1.5
   )
-```
 
-
-
-WCSN:
-
-```{r}
-df_w %>%
-  filter(type == "WCSN") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = stdid
-  )
-```
-
-
-WCRD:
-
-```{r}
-df_w %>%
-  filter(type == "WCRD") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = stdid
-  )
-```
-
-
-WPSN:
-
-```{r}
-df_w %>%
-  filter(type == "WPSN") %>% 
-  rma(
-    yi = ES, 
-    vi = EV, 
-    data = ., 
-    method = "REML",
-    slab = stdid
-  )
-```
-
-
-WPRD:
-
-```{r}
-df_w %>%
+model_wprd <-
+  df_w %>%
   filter(type == "WPRD") %>% 
   rma(
     yi = ES, 
@@ -696,6 +668,46 @@ df_w %>%
     method = "REML",
     slab = stdid
   )
+
+model_wpsn <-
+  df_w %>%
+  filter(type == "WPSN") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
+# df_w %>% arrange(type, ES)
 ```
+
+
+
+```{r, fig.retina = 4, fig.asp=1}
+forest(
+  model_w,
+  xlab = "Writing Proficiency",
+  addcred = T, 
+  header = T,
+  xlim = c(-10, 10),
+  ylim = c(-1, 15),
+  rows = c(3:5, 9:11),
+  pch = 21,
+  bg = "grey",
+  lwd = 1.5
+)
+
+op <- par(cex = 0.75, font = 4)
+
+text(-10, c(6, 12), pos = 4, c("Standardized", "Reseacher Developed (Distal)"))
+addpoly(model_wprd, row = 8, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_wpsn, row = 1.5, cex = 1.25, col = "white", lwd = 3)
+```
+
+
+
+
 
 
