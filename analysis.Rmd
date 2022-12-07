@@ -10,16 +10,98 @@ output:
 
 <br/>
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.retina = 4)
 ```
 
 ```{r}
 # Libraries
-pacman::p_load(metafor, readxl, MAd, metaforest, dmetar, DT, robumeta, janitor, tidyverse)
+pacman::p_load(metafor, readxl, MAd, metaforest, dmetar, DT, robumeta, janitor, tidyverse, texreg, effectsize, skimr)
 
 # Parameters
 data_file <- here::here("data", "Multimedia Meta Data.xlsx")
+
+# effectsize::t_to_d(2.22, 139)
+# dmetar::se.from.p(effect.size = 0.38, p = 0.028, N = 141) %>% transmute(EV = round(StandardError * StandardError, 4))
+```
+
+
+
+```{r}
+#### Directly entered ES
+
+df_es1 <-
+  read_xlsx(data_file, sheet = "Effect Size Only 1") %>% 
+  transmute(
+    study_id = STUDYID,
+    type = str_sub(Outcome, 1, 3),
+    ES,
+    EV
+  ) %>% 
+  remove_empty()
+
+df_es2 <-
+  read_xlsx(data_file, sheet = "Effect Size Only 2") %>% 
+  remove_empty() %>% 
+  transmute(
+    study_id = STUDYID,
+    type = str_sub(Outcome, 1, 3),
+    ES,
+    EV
+  ) %>% 
+  remove_empty()
+
+  
+df_es3 <-
+  read_xlsx(data_file, sheet = "Effect Size Only 3") %>% 
+  transmute(study_id = STUDYID, type = str_sub(Outcome, 1, 3), ES = ES1, EV = se1 * se1) %>%
+  bind_rows(
+    read_xlsx(data_file, sheet = "Effect Size Only 3") %>% 
+      transmute(study_id = STUDYID, type = str_sub(Outcome, 1, 3), ES = ES2, EV = se2 * se2)
+  )
+
+df_es4 <-
+  read_xlsx(data_file, sheet = "Effect Size Only 4") %>% 
+  remove_empty() %>% 
+  transmute(
+    study_id = STUDYID,
+    type = str_sub(Outcome, 1, 3),
+    ES,
+    EV
+  ) %>% 
+  remove_empty()
+
+df_es5 <-
+  read_xlsx(data_file, sheet = "Effect Size Only 5") %>% 
+  remove_empty() %>% 
+  transmute(
+    study_id = STUDYID,
+    type = str_sub(Outcome, 1, 3),
+    ES,
+    EV
+  ) %>% 
+  remove_empty()
+
+df_es6 <-
+  read_xlsx(data_file, sheet = "Effect Size Only 6") %>% 
+  remove_empty() %>% 
+  transmute(
+    study_id = STUDYID,
+    type,
+    ES,
+    EV
+  ) %>% 
+  remove_empty()
+
+df_es_direct <-
+  bind_rows(df_es1, df_es2, df_es3, df_es4, df_es5, df_es6) %>% 
+  inner_join(
+    read_xlsx(data_file, sheet = "All Studies") %>% 
+      select(study_id = `STUDYID`, AUTYR = `Author (Year)`) %>% 
+      drop_na(AUTYR),
+    by = "study_id"
+  )
 ```
 
 
@@ -36,49 +118,198 @@ df_raw <-
     "LRP" = read_xlsx(data_file, sheet = "Linguistic Comprehension-LRP") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "LRP", "")),
     "CSN" = read_xlsx(data_file, sheet = "Reading Comprehension-CSN") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "CSN", "")),
     "CRD" = read_xlsx(data_file, sheet = "Reading Comprehension-CRD") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "CRD", "")),
-    "WCSN" = read_xlsx(data_file, sheet = "Writing Conventions-WCSN") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "WCSN", "")),
-    "WCRD" = read_xlsx(data_file, sheet = "Writing Conventions-WCRD") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "WCRD", "")),
     "WPSN" = read_xlsx(data_file, sheet = "Writing Proficiency-WPSN") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "WPSN", "")),
     "WPRD" = read_xlsx(data_file, sheet = "Writing Proficiency-WPRD") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "WPRD", "")),
     .id = "type"
   ) %>% 
-  rename(study_id = `STUDYID`, AUTYR = `Author (Year)`) %>%
+  rename(study_id = `STUDYID`) %>%
   drop_na(study_id) %>%
+  anti_join(df_es6, by = c("type", "study_id")) %>%
+  bind_rows(
+    .,
+    bind_rows(
+      "DSN" = read_xlsx(data_file, sheet = "New Postonly") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "DSN", "")),
+      "DSN" = read_xlsx(data_file, sheet = "New Prepost") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "DSN", "")),
+      # "LSN" = read_xlsx(data_file, sheet = "New Prepost 2") %>% rename_at(vars(-c(1:2)), ~ str_replace(., "LSN", "")),
+      .id = "type"
+    )
+  ) %>%
   remove_empty() %>%
-  select(-AUTYR) %>% 
+  select(-`Author (Year)`) %>% 
   select(study_id, type, sort(current_vars()))
-  # mutate(
-  #   type = if_else(type == "WCSN", "DSN", type),
-  #   type = if_else(type == "WCRD", "DRD", type),
-  # )
+```
+
+
+```{r}
+# HLM data
+
+df_hlm1 <-
+  read_xlsx(data_file, sheet = "HLM Effects 1") %>% 
+  mutate(
+    type = str_sub(Outcome, 1, 3),
+    msr = str_sub(Outcome, 4, 4),
+  ) %>% 
+  select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
+  rename(study_id = `STUDYID`) %>%
+  drop_na(study_id) %>%
+  select(study_id, type, msr, sort(current_vars())) %>% 
+  remove_empty() %>% 
+  pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
+  remove_empty()
+
+df_hlm2 <-
+  read_xlsx(data_file, sheet = "HLM Effects 2") %>% 
+  mutate(
+    type = str_sub(Outcome, 1, 3),
+    msr = str_sub(Outcome, 4, 4),
+  ) %>% 
+  select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
+  rename(study_id = `STUDYID`) %>%
+  drop_na(study_id) %>%
+  select(study_id, type, msr, sort(current_vars())) %>% 
+  remove_empty() %>% 
+  pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
+  remove_empty()
+
+
+df_hlm3 <-
+  read_xlsx(data_file, sheet = "HLM Effects 3") %>% 
+  mutate(
+    type = str_sub(Outcome, 1, 3),
+    msr = str_sub(Outcome, 4, 4),
+  ) %>% 
+  select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
+  rename(study_id = `STUDYID`) %>%
+  drop_na(study_id) %>%
+  select(study_id, type, msr, sort(current_vars())) %>% 
+  remove_empty() %>% 
+  pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
+  remove_empty()
+
+
+df_hlm4 <-
+  read_xlsx(data_file, sheet = "HLM Effects 4") %>% 
+  mutate(
+    type = str_sub(Outcome, 1, 3),
+    msr = str_sub(Outcome, 4, 4),
+  ) %>% 
+  select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
+  rename(study_id = `STUDYID`) %>%
+  drop_na(study_id) %>%
+  select(study_id, type, msr, sort(current_vars())) %>% 
+  remove_empty() %>% 
+  pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
+  remove_empty()
+
+
+df_hlm5 <-
+  read_xlsx(data_file, sheet = "HLM Effects 5") %>% 
+  select(-c("Coefficient from HLM", "se", "Pooled student level sd", "effect size")) %>% 
+  mutate(
+    type = str_sub(Outcome, 1, 3),
+    msr = str_sub(Outcome, 4, 4),
+  ) %>% 
+  select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
+  rename(study_id = `STUDYID`) %>%
+  drop_na(study_id) %>%
+  select(study_id, type, msr, sort(current_vars())) %>% 
+  remove_empty() %>% 
+  pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
+  remove_empty()
+
+
+df_hlm <- 
+  bind_rows(df_hlm1, df_hlm2, df_hlm3, df_hlm4, df_hlm5) %>%
+  mutate(type = str_c(type, "HLM", sep = "-")) %>%
+  rename(
+    C11MPost = C1MPost_1,
+    C21MPost = C1MPost_2,
+    C31MPost = C1MPost_3, 
+    C41MPost = C1MPost_4, 
+    C51MPost = C1MPost_5, 
+    C61MPost = C1MPost_6, 
+    C11MPre  = C1MPre_1,  
+    C11NPost = C1NPost_1,
+    C21NPost = C1NPost_2, 
+    C31NPost = C1NPost_3, 
+    C41NPost = C1NPost_4,
+    C51NPost = C1NPost_5, 
+    C61NPost = C1NPost_6, 
+    C11NPre = C1NPre_1,  
+    C11SPost = C1SPost_1, 
+    C21SPost = C1SPost_2, 
+    C31SPost = C1SPost_3, 
+    C41SPost = C1SPost_4,
+    C51SPost = C1SPost_5, 
+    C61SPost = C1SPost_6, 
+    C11SPre = C1SPre_1,  
+    T11MPost = T1MPost_1, 
+    T21MPost = T1MPost_2, 
+    T31MPost = T1MPost_3, 
+    T41MPost = T1MPost_4, 
+    T51MPost = T1MPost_5, 
+    T61MPost = T1MPost_6, 
+    T11MPre = T1MPre_1, 
+    T11NPost = T1NPost_1, 
+    T21NPost = T1NPost_2, 
+    T31NPost = T1NPost_3, 
+    T41NPost = T1NPost_4, 
+    T51NPost = T1NPost_5, 
+    T61NPost = T1NPost_6, 
+    T11NPre = T1NPre_1,  
+    T11SPost = T1SPost_1, 
+    T21SPost = T1SPost_2, 
+    T31SPost = T1SPost_3,
+    T41SPost = T1SPost_4, 
+    T51SPost = T1SPost_5, 
+    T61SPost = T1SPost_6, 
+    T11SPre = T1SPre_1,  
+    C21MPre = C1MPre_2, 
+    C41MPre = C1MPre_4,  
+    C21NPre = C1NPre_2,  
+    C41NPre = C1NPre_4,  
+    C21SPre = C1SPre_2,  
+    C41SPre = C1SPre_4,
+    T21MPre = T1MPre_2,  
+    T41MPre = T1MPre_4,  
+    T21NPre = T1NPre_2, 
+    T41NPre = T1NPre_4,  
+    T21SPre = T1SPre_2, 
+    T41SPre = T1SPre_4, 
+    C31MPre = C1MPre_3,  
+    C31NPre = C1NPre_3,  
+    C31SPre = C1SPre_3,  
+    T31MPre = T1MPre_3,
+    T31NPre = T1NPre_3,  
+    T31SPre = T1SPre_3 
+  ) %>% 
+  remove_empty()
+
+# remove redundant dfs
+rm(df_hlm1, df_hlm2, df_hlm3, df_hlm4, df_hlm5)
+rm(df_es1, df_es2, df_es3, df_es4, df_es5, df_es6)
+```
+
+
+```{r}
+df_raw <- bind_rows(df_raw, df_hlm)
 
 # remove redundant rows
 df_raw$na_count <- apply(df_raw, 1, function(x) sum(is.na(x)))
+#df_raw %>% filter(na_count >= (ncol(df_raw) - 3)) %>% remove_empty()
 df_raw <- df_raw %>% filter(na_count < (ncol(df_raw) - 3))
+
+#df_raw %>% arrange(-na_count) %>% count(na_count) %>% mutate(na_count = na_count/3)
+#head(1) %>% remove_empty() %>% glimpse()
 ```
-
-
-```{r, eval=F}
-df_direct_es <-
-  read_xlsx(data_file, sheet = "Effect Size Only 1") %>% 
-  bind_rows(read_xlsx(data_file, sheet = "Effect Size Only 2")) %>%
-  bind_rows(read_xlsx(data_file, sheet = "Effect Size Only 3")) %>%
-  bind_rows(read_xlsx(data_file, sheet = "Effect Size Only 4")) %>% 
-  remove_empty() %>%
-  transmute(study_id = STUDYID, type = "direct") %>% 
-  distinct(study_id, type)
-
-# df_raw <- df_raw %>% bind_rows(df_direct_es)
-```
-
 
 
 ```{r, eval=FALSE}
 # general checks
-df_raw %>% glimpse()
+df_raw %>% get_dupes()
 df_raw %>% count(type)
-df_raw %>% summarize_at(vars(1, 2, 198), ~ mean(is.na(.)))
-df_raw %>% get_dupes(type, study_id)
+df_raw %>% summarize_at(vars(1, 2, 210), ~ mean(is.na(.)))
+df_raw %>% get_dupes(type, study_id) %>% remove_empty()
 ```
 
 
@@ -97,7 +328,7 @@ df_raw <-
   relocate(type, study_id, AUTYR) %>% 
   arrange(type, study_id, AUTYR)
 
-df_raw %>% 
+df_raw %>%
   mutate(
     type = if_else(type == "WCSN", "DSN", type),
     type = if_else(type == "WCRD", "DRD", type),
@@ -116,22 +347,7 @@ df_raw %>%
 
 <br/>
 
-### Calculated effect sizes
-
-
-```{r}
-# creating needed control columns
-# for (m in 1:2) {
-#   for (n in 1:2) {
-#     if ((str_glue("T{m}{n}MPost") %in% colnames(df_post)) & !(str_glue("C{m}{n}MPost") %in% colnames(df_post))) {
-#       df_post[, str_c("C", m, n, "MPost")] = df_post[, str_c("C", m - 1, n, "MPost")]
-#       df_post[, str_c("C", m, n, "NPost")] = df_post[, str_c("C", m - 1, n, "NPost")]
-#       df_post[, str_c("C", m, n, "SPost")] = df_post[, str_c("C", m - 1, n, "SPost")]
-#     }
-#   }
-# }
-```
-
+### Calculating effect sizes
 
 
 ```{r}
@@ -180,25 +396,6 @@ df_post <-
 
 
 
-```{r, eval=F}
-# creating needed control columns
-# for (m in 1:9) {
-#   for (n in 1:9) {
-#     if ((str_glue("T{m}{n}MPost") %in% colnames(df_prepost)) & !(str_glue("C{m}{n}MPost") %in% colnames(df_prepost))) {
-#       df_prepost[, str_c("C", m, n, "MPost")] = df_prepost[, str_c("C", m - 1, n, "MPost")]
-#       df_prepost[, str_c("C", m, n, "NPost")] = df_prepost[, str_c("C", m - 1, n, "NPost")]
-#       df_prepost[, str_c("C", m, n, "SPost")] = df_prepost[, str_c("C", m - 1, n, "SPost")]
-#     }
-#     if ((str_glue("T{m}{n}MPre") %in% colnames(df_prepost)) & !(str_glue("C{m}{n}MPre") %in% colnames(df_prepost))) {
-#       df_prepost[, str_c("C", m, n, "MPre")] = df_prepost[, str_c("C", m - 1, n, "MPre")]
-#       df_prepost[, str_c("C", m, n, "NPre")] = df_prepost[, str_c("C", m - 1, n, "NPre")]
-#       df_prepost[, str_c("C", m, n, "SPre")] = df_prepost[, str_c("C", m - 1, n, "SPre")]
-#     }
-#   }
-# }
-```
-
-
 ```{r}
 # Pre and Post
 
@@ -216,7 +413,7 @@ for (a in 1:9) {
           m2i = df_prepost[, str_c("T", t, a, "MPre")] %>% unlist(),
           sd1i = df_prepost[, str_c("T", t, a, "SPre")] %>% unlist(),
           ni = df_prepost[, str_c("T", t, a, "NPost")] %>% unlist(),
-          ri = rep(0.5, 123),
+          ri = rep(0.5, 183),
           var.names = c(str_glue("TES{a}_{t}"), str_glue("TEV{a}_{t}"))
         )
     }
@@ -235,7 +432,7 @@ for (a in 1:9) {
           m2i = df_prepost[, str_c("C", c, a, "MPre")] %>% unlist(),
           sd1i = df_prepost[, str_c("C", c, a, "SPre")] %>% unlist(),
           ni = df_prepost[, str_c("C", c, a, "NPost")] %>% unlist(),
-          ri = rep(0.5, 123),
+          ri = rep(0.5, 183),
           var.names = c(str_glue("CES{a}_{c}"), str_glue("CEV{a}_{c}"))
         )
     }
@@ -291,27 +488,24 @@ df_es_calc <-
     EV.x = if_else(is.na(EV.x) & !is.na(EV.y), EV.y, EV.x)
   ) %>% 
   select(study_id, AUTYR, type, ES = ES.x, EV = EV.x)
+
+# anti_join(df_post, df_prepost, by = c("study_id", "AUTYR", "type", "num")) %>% count(study_id)
 ```
 
-
-```{r}
-#### Directly entered ES
-
-df_es_direct <- tibble()
-```
 
 
 ```{r, fig.retina=4}
 #### Combining all
-
 df_append <- 
   bind_rows(df_es_calc, df_es_direct) %>% 
   mutate(
     type = if_else(type == "WCSN", "DSN", type),  # fixing WCSN --> DSN
     type = if_else(type == "WCRD", "DRD", type),  # fixing WCRD --> DRD
-  ) %>% 
+    type = str_replace(type, "-HLM", ""), # removing HLM as separate sub-type
+  ) %>%
   arrange(type, study_id) %>%
-  select(type, stdid = study_id, AUTYR, everything())
+  select(type, stdid = study_id, AUTYR, everything()) %>% 
+  distinct()
 
 cor_es <-
   df_append %>%
@@ -327,83 +521,94 @@ df_clean <-
   left_join(cor_es, by = c("type", "stdid")) %>% 
   mutate_if(is.character, ~ str_replace_all(., '[\n\t]', '')) %>% 
   arrange(type, stdid)
+
+rm(df_es_calc, df_es_direct, df_post, df_prepost, cor_es, df_raw, df_append, df_hlm, a, c, t)
+```
+
+
+```{r}
+## add moderators ##
+
+moderators <-
+  read_xlsx(here::here("data/Revised Tables.xlsx")) %>%
+  remove_empty() %>% 
+  clean_names() %>% 
+  transmute(
+    stdid = as.character(studyid),
+    outside_us = if_else(outside_us == "Yes", 1L, 0L),
+    low_income_included = if_else(lowinc33 == "Yes", 1L, 0L),
+    second_lang_included = if_else(seclang33 == "Yes", 1L, 0L),
+    stu_disability_included = if_else(stdis33 == "Yes", 1L, 0L),
+    grade = case_when(
+      k == 1 ~ "K-2",
+      gr1 == 1 ~ "K-2",
+      gr2 == 1 ~ "K-2",
+      gr3 == 1 ~ "3-5",
+      gr4 == 1 ~ "3-5",
+      gr5 == 1 ~ "3-5",
+      TRUE ~ NA_character_
+    ),
+    pedagogy = case_when(
+      pedagogy == 1 ~ "Behavioral",
+      pedagogy == 2 ~ "Cognitive",
+      pedagogy == 3 ~ "Constructivist",
+      TRUE ~ NA_character_
+    ),
+    instructional_context = case_when(
+      ins_cont_i0 == 0 ~ "Individual only",
+      ins_cont_i0 == 1 ~ "Other than individual",
+      TRUE ~ NA_character_
+    ),
+    tech_plus1,
+    typetech,
+    gamification = if_else(gamification == "Yes", 1L, 0L),
+    adaptivity = if_else(adaptivity == "Yes", 1L, 0L),
+    feedback = if_else(feedback == "Yes", 1L, 0L),
+    teach_tr = if_else(teach_tr == "Yes", 1L, 0L),
+    design,
+    control,
+    avghrs = case_when(
+      avghrs >= 0 & avghrs <= 10 ~ "0-10",
+      avghrs > 10 & avghrs <= 20 ~ "11-20",
+      avghrs > 20 & avghrs <= 30 ~ "21-30",
+      avghrs > 30 & avghrs <= 40 ~ "31-40",
+      avghrs > 40 & avghrs <= 50 ~ "41-50",
+      avghrs > 50 ~ "50+",
+      TRUE ~ NA_character_
+    )
+  )
+
+
+df_clean <-
+  df_clean %>%
+  left_join(moderators, by = "stdid") %>%
+  relocate(type, stdid, AUTYR) %>%
+  arrange(type, stdid, AUTYR)
+
+rm(moderators)
 ```
 
 
 
 ```{r}
-# df_clean <-
-#   df_append %>%
-#   group_by(type, stdid) %>%
-#   summarize_at(vars(Content:Hours), ~ round(mean(.))) %>%
-#   ungroup() %>%
-#   left_join(cor_es, by = c("type", "stdid")) %>% 
-#   select(type, stdid, ES, EV, everything()) %>% 
-#   mutate(
-#     design = case_when(
-#       RCT == 1 ~ "RCT",
-#       QED == 1 ~ "QED",
-#       WSD == 1 ~ "WSD",
-#       TRUE ~ NA_character_
-#     ) %>% as_factor(),
-#     grade = case_when(
-#       (GradeK + Grade1 + Grade2) > 0 & (Grade3 + Grade4 + Grade5) == 0 ~ "K-2",
-#       (Grade3 + Grade4 + Grade5) > 0 & (GradeK + Grade1 + Grade2) == 0 ~ "3-5",
-#       TRUE ~ "Both"
-#     ) %>% as_factor(),
-#     grouping = case_when(
-#       (WholeCl == 1) & (SmallGr == 0) & (Indiv == 0) ~ 1,
-#       TRUE ~ 0
-#     ),
-#     CONT = CONT %>% factor(labels = c("BAU", "ALT")),
-#     TCOM = if_else(TLC == 1 | TRC == 1, 1, 0)
-#   ) %>%
-#   select(-c(RCT, QED, WSD, WholeCl, SmallGr, Indiv), -starts_with("Grade", ignore.case = F)) %>% 
-#   left_join(
-#     read_xlsx(data_file, sheet = "citations"),
-#     by = c("type", "stdid")
-#   ) %>% 
-#   mutate(
-#     type = type %>% as_factor(),
-#     citation = if_else(str_detect(type, "S$"), str_c(citation, " "), citation)
-#   )
-
-rm(df_es_calc, df_es_direct, df_post, df_prepost)
-#df_clean %>% summary()
+#### Filtered datasets
+df_c <- df_clean %>% filter(type %in% c("CRD", "CRP", "CSN"))
+df_d <- df_clean %>% filter(type %in% c("DRD", "DRP", "DSN"))
+df_l <- df_clean %>% filter(type %in% c("LRD", "LRP", "LSN"))
+df_w <- df_clean %>% filter(type %in% c("WPRD", "WPSN"))
 ```
 
 
+
 ```{r}
-df_clean %>% 
+# displaying clean df
+
+df_clean %>%
   relocate(AUTYR, stdid) %>%
   arrange(AUTYR, type) %>% 
   select(`Author (Year)` = AUTYR, type, ES, EV) %>% 
   mutate_if(is.numeric, ~ round(., 4)) %>% 
   datatable()
-```
-
-
-```{r}
-#### Summary stats
-
-# df_clean %>% count(type)
-# df_clean %>% arrange(type, ES) %>% writexl::write_xlsx("df_clean.xlsx")
-# df_clean %>% select(stdid, type) %>% arrange(stdid, type) %>% writexl::write_xlsx("temp.xlsx")
-# df_clean %>% count(type, stdid)
-
-df_c <- df_clean %>% filter(type %in% c("CRD", "CSN"))
-df_d <- df_clean %>% filter(type %in% c("DRD", "DRP", "DSN"), stdid != "38")
-df_l <- df_clean %>% filter(type %in% c("LRD", "LRP", "LSN"))
-df_w <- df_clean %>% filter(type %in% c("WPRD", "WPSN"))
-
-# changes for rebecca
-# df_v %>% filter(stdid %in% c("Coyne10", "Coyne19", "Puhal", "Pullen"), type == "VR") %>% rma(
-#     yi = ES, 
-#     vi = EV, 
-#     data = ., 
-#     method = "REML",
-#     slab = citation
-#   )
 ```
 
 
@@ -413,13 +618,16 @@ df_w <- df_clean %>% filter(type %in% c("WPRD", "WPSN"))
 
 ### Synthesizing effect sizes
 
-
 #### Decoding
-
 
 ```{r}
 model_d <-
   df_d %>%
+  mutate(type = factor(type, levels = c("DRP", "DRD", "DSN"))) %>% 
+  mutate(
+    AUTYR = if_else(str_detect(type, "D$"), str_c(AUTYR, " "), AUTYR),
+    AUTYR = if_else(str_detect(type, "N$"), str_c(AUTYR, "  "), AUTYR),
+  ) %>%
   arrange(desc(type), desc(ES)) %>% 
   rma(
     yi = ES, 
@@ -429,9 +637,9 @@ model_d <-
     slab = AUTYR
   )
 
-model_drd <-
+model_dr <-
   df_d %>%
-  filter(type == "DRD") %>% 
+  filter(str_detect(type, "^DR")) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -451,6 +659,17 @@ model_drp <-
     slab = stdid
   )
 
+model_drd <-
+  df_d %>%
+  filter(type == "DRD") %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
+  )
+
 model_dsn <-
   df_d %>%
   filter(type == "DSN") %>% 
@@ -462,34 +681,73 @@ model_dsn <-
     slab = stdid
   )
 
-#df_d %>% arrange(type, ES)
+# df_d %>% mutate(type = factor(type, levels = c("DRP", "DRD", "DSN"))) %>% count(type)
+# df_d %>% arrange(type, ES)
+```
+
+Overall:
+
+```{r}
+model_d
 ```
 
 
+Researcher-Developed proximal:
 
-```{r, fig.retina = 4, fig.asp=1.8}
+```{r}
+model_drp
+```
+
+Researcher-Developed distal:
+
+```{r}
+model_drd
+```
+
+Researcher-Developed (all):
+
+```{r}
+model_dr
+```
+
+Standardized:
+
+```{r}
+model_dsn
+```
+
+
+```{r, fig.retina = 4, fig.asp=3}
+a1 <- 4
+a2 <- 4 + nrow(df_d %>% filter(type == "DSN")) - 1
+
+b1 <- a2 + 6
+b2 <- b1 + nrow(df_d %>% filter(type == "DRD")) - 1
+
+c1 <- b2 + 6
+c2 <- c1 + nrow(df_d %>% filter(type == "DRP")) - 1
+
 forest(
   model_d,
-  xlab = "Decoding",
+  xlab = "Decoding Related Skills",
   addcred = T, 
   header = T,
-  #xlim = c(-15, 18),
-  ylim = c(-1, 67),
-  rows = c(4:20, 27:30, 38:61),
+  xlim = c(-6, 6),
+  ylim = c(0, c2 + 6),
+  rows = c(a1:a2, b1:b2, c1:c2),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 
-op <- par(cex = 0.75, font = 4)
+op <- par(cex = 1.25, font = 4)
 
-text(-12, c(22, 32, 63), pos = 4, c("Standardized", "Reseacher Developed (Proximal)", "Reseacher Developed (Distal)"))
-addpoly(model_drd, row = 36, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_drp, row = 25, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_dsn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
+text(-6, c(a2 + 2, b2 + 2, c2 + 2), pos = 4, c("Standardized", "Researcher-Developed (Distal)", "Researcher-Developed (Proximal)"))
+
+addpoly(model_drp, row = b2 + 4, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_drd, row = a2 + 4, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_dsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 ```
-
-
 
 ---
 
@@ -500,6 +758,10 @@ addpoly(model_dsn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
 ```{r}
 model_c <-
   df_c %>%
+  mutate(type = factor(type, levels = c("CRP", "CRD", "CSN"))) %>% 
+  mutate(
+    AUTYR = if_else(str_detect(type, "N$"), str_c(AUTYR, " "), AUTYR),
+  ) %>%
   arrange(desc(type), desc(ES)) %>% 
   rma(
     yi = ES, 
@@ -509,9 +771,10 @@ model_c <-
     slab = AUTYR
   )
 
-model_crd <-
+
+model_cr <-
   df_c %>%
-  filter(type == "CRD") %>% 
+  filter(str_detect(type, "^CR")) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -530,30 +793,56 @@ model_csn <-
     method = "REML",
     slab = stdid
   )
-
-#df_c %>% arrange(type, ES)
 ```
 
 
-```{r, fig.retina = 4, fig.asp=1.5}
+Overall:
+
+```{r}
+model_c
+```
+
+
+Researcher-Developed (Distal):
+
+```{r}
+model_cr
+```
+
+Standardized:
+
+```{r}
+model_csn
+```
+
+
+
+```{r, fig.retina = 4, fig.asp=3}
+a1 <- 4
+a2 <- 4 + nrow(df_c %>% filter(type == "CSN")) - 1
+
+b1 <- a2 + 6
+b2 <- b1 + nrow(df_c %>% filter(type == "CRD")) - 1
+
 forest(
   model_c,
-  xlab = "Reading Comprehension",
+  xlab = "Reading Comprehension Skills",
   addcred = T, 
   header = T,
-  #xlim = c(-15, 18),
-  ylim = c(-1, 48),
-  rows = c(4:26, 33:42),
+  xlim = c(-6, 5),
+  ylim = c(0, b2 + 6),
+  rows = c(a1:a2, b1:b2),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 
-op <- par(cex = 0.75, font = 4)
+op <- par(cex = 1.25, font = 4)
 
-text(-7.4, c(28, 44), pos = 4, c("Standardized", "Reseacher Developed (Distal)"))
-addpoly(model_crd, row = 31, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_csn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
+text(-6, c(a2 + 2, b2 + 2), pos = 4, c("Standardized", "Researcher-Developed (Distal)"))
+
+addpoly(model_cr, row = a2 + 4, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_csn, row = 2, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
@@ -568,6 +857,11 @@ addpoly(model_csn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
 ```{r}
 model_l <-
   df_l %>%
+  mutate(type = factor(type, levels = c("LRP", "LRD", "LSN"))) %>%
+  mutate(
+    AUTYR = if_else(str_detect(type, "D$"), str_c(AUTYR, " "), AUTYR),
+    AUTYR = if_else(str_detect(type, "N$"), str_c(AUTYR, "  "), AUTYR),
+  ) %>% 
   arrange(desc(type), desc(ES)) %>% 
   rma(
     yi = ES, 
@@ -575,6 +869,17 @@ model_l <-
     data = ., 
     method = "REML",
     slab = AUTYR
+  )
+
+model_lr <-
+  df_l %>%
+  filter(str_detect(type, "^LR")) %>% 
+  rma(
+    yi = ES, 
+    vi = EV, 
+    data = ., 
+    method = "REML",
+    slab = stdid
   )
 
 model_lrd <-
@@ -611,32 +916,75 @@ model_lsn <-
   )
 
 # df_l %>% arrange(type, ES)
-# df_l %>% count(type)
+# df_l %>% mutate(type = factor(type, levels = c("LRP", "LRD", "LSN"))) %>% count(type)
 ```
 
 
-```{r, fig.retina = 4, fig.asp=1.2}
+Overall:
+
+```{r}
+model_l
+```
+
+
+Researcher-Developed proximal:
+
+```{r}
+model_lrp
+```
+
+Researcher-Developed distal:
+
+```{r}
+model_lrd
+```
+
+Researcher-Developed (all):
+
+```{r}
+model_lr
+```
+
+Standardized:
+
+```{r}
+model_lsn
+```
+
+
+
+
+```{r, fig.retina = 4, fig.asp=3}
+a1 <- 4
+a2 <- 4 + nrow(df_l %>% filter(type == "LSN")) - 1
+
+b1 <- a2 + 6
+b2 <- b1 + nrow(df_l %>% filter(type == "LRD")) - 1
+
+c1 <- b2 + 6
+c2 <- c1 + nrow(df_l %>% filter(type == "LRP")) - 1
+
 forest(
   model_l,
-  xlab = "Language Comprehension",
+  xlab = "Language Comprehension Related Skills",
   addcred = T, 
   header = T,
-  xlim = c(-10, 10),
-  ylim = c(-1, 47),
-  rows = c(4:12, 18:29, 36:41),
+  xlim = c(-7, 7),
+  ylim = c(0, c2 + 6),
+  rows = c(a1:a2, b1:b2, c1:c2),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 
-op <- par(cex = 0.75, font = 4)
+op <- par(cex = 1.25, font = 4)
 
-text(-10, c(14, 31, 43), pos = 4, c("Standardized", "Reseacher Developed (Proximal)", "Reseacher Developed (Distal)"))
-addpoly(model_lrd, row = 33.5, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_lrp, row = 16.5, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_lsn, row = 2.5, cex = 1.25, col = "white", lwd = 3)
+text(-7, c(a2 + 2, b2 + 2, c2 + 2), pos = 4, c("Standardized", "Researcher-Developed (Distal)", "Researcher-Developed (Proximal)"))
+
+addpoly(model_lrp, row = b2 + 4, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_lrd, row = a2 + 4, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_lsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 ```
-
 
 
 
@@ -685,28 +1033,1834 @@ model_wpsn <-
 
 
 
-```{r, fig.retina = 4, fig.asp=1}
+Overall:
+
+```{r}
+model_w
+```
+
+
+Researcher-Developed distal:
+
+```{r}
+model_wprd
+```
+
+
+Standardized:
+
+```{r}
+model_wpsn
+```
+
+
+
+```{r, fig.retina = 4, fig.asp = 1}
+a1 <- 4
+a2 <- 4 + nrow(df_w %>% filter(type == "WPSN")) - 1
+
+b1 <- a2 + 6
+b2 <- b1 + nrow(df_w %>% filter(type == "WPRD")) - 1
+
 forest(
   model_w,
-  xlab = "Writing Proficiency",
+  xlab = "Writing Skills",
   addcred = T, 
   header = T,
-  xlim = c(-10, 10),
-  ylim = c(-1, 15),
-  rows = c(3:5, 9:11),
+  xlim = c(-4, 5),
+  ylim = c(-2, b2 + 6),
+  rows = c(a1:a2, b1:b2),
   pch = 21,
   bg = "grey",
   lwd = 1.5
 )
 
-op <- par(cex = 0.75, font = 4)
+op <- par(cex = 1.25, font = 4)
 
-text(-10, c(6, 12), pos = 4, c("Standardized", "Reseacher Developed (Distal)"))
-addpoly(model_wprd, row = 8, cex = 1.25, col = "white", lwd = 3)
-addpoly(model_wpsn, row = 1.5, cex = 1.25, col = "white", lwd = 3)
+text(-4, c(a2 + 2, b2 + 2), pos = 4, c("Standardized", "Researcher-Developed (Distal)"))
+
+addpoly(model_wprd, row = a2 + 4, cex = 1.25, col = "white", lwd = 3)
+addpoly(model_wpsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
+---
+
+<!-- <br/> -->
+
+<!-- ### Moderator analyses -->
+
+<!-- #### Decoding -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ grade) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_number_of_hours) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ location) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_tech_type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_instructional_focus) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ dissertation) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ teacher_training) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher Training")) -->
+<!-- ``` -->
+
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ disabilities_inc) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ low_ses) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ l2inc) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ adaptive) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ gamification) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ personalization_inc) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ integrated) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ factor(stance)) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ l2targeted) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+<!-- Group size 2 or 3 has larger effects than group size 1, but not statistically significant. -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(group_size %in% c(1, 2, 3)) %>% -->
+<!--   mutate(group_size = if_else(group_size == 1, "1", "2-3")) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ group_size) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- No group size 4 for decoding studies. -->
+
+<!-- ```{r, results='asis', eval=F} -->
+<!-- df_d %>% -->
+<!--   filter(group_size %in% c(1, 4)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 5]: -->
+
+<!-- Group size 5 has larger effects than 1, but not significant. -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: -->
+
+<!-- Comprehension effect sizes are lower than combo effect sizes. The difference is not statistically significant though. -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(t1_instructional_focus %in% c("Comprehension", "Combo")) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_instructional_focus) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Instructional focus")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+<!-- Stance 2 effect sizes are lower than Stance 1 effect sizes. The difference is not statistically significant though. -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+
+<!-- #### Reading Comprehension -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ grade) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_number_of_hours) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ location) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_tech_type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_instructional_focus) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ dissertation) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ teacher_training) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher training")) -->
+<!-- ``` -->
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ disabilities_inc) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ low_ses) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ l2inc) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ adaptive) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ gamification) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ personalization_inc) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ integrated) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ factor(stance)) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ l2targeted) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(group_size %in% c(1, 2, 3)) %>% -->
+<!--   mutate(group_size = if_else(group_size == 1, "1", "2-3")) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ group_size) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(group_size %in% c(1, 4)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 5]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(t1_instructional_focus %in% c("Comprehension", "Combo")) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_instructional_focus) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Instructional focus")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+
+<!-- #### Language Comprehension -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grade) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_number_of_hours) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ location) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_tech_type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_instructional_focus) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ dissertation) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ teacher_training) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher training")) -->
+<!-- ``` -->
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ disabilities_inc) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ low_ses) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ l2inc) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ adaptive) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ gamification) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ personalization_inc) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ integrated) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ factor(stance)) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ l2targeted) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+<!-- No variation exists for this variable. -->
+
+<!-- ```{r, results='asis', eval = F} -->
+<!-- df_l %>% -->
+<!--   filter(group_size %in% c(1, 2, 3)) %>% -->
+<!--   mutate(group_size = if_else(group_size == 1, "1", "2-3")) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ group_size) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- No variation exists for this variable. -->
+
+<!-- ```{r, results='asis', eval = F} -->
+<!-- df_l %>% -->
+<!--   filter(group_size %in% c(1, 4)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 5]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   filter(t1_instructional_focus %in% c("Comprehension", "Combo")) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_instructional_focus) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Instructional focus")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+
+<!-- --- -->
+
+<!-- #### Writing Proficiency -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ design) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ grade) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_number_of_hours) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ location) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_tech_type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_instructional_focus) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ dissertation) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ teacher_training) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher training")) -->
+<!-- ``` -->
+
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ disabilities_inc) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ low_ses) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ l2inc) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ adaptive) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ gamification) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ personalization_inc) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ integrated) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ factor(stance)) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ l2targeted) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+
+<!-- No variation exists for this variable. -->
+
+<!-- ```{r, results='asis', eval = F} -->
+<!-- df_w %>% -->
+<!--   filter(group_size %in% c(1, 2, 3)) %>% -->
+<!--   mutate(group_size = if_else(group_size == 1, "1", "2-3")) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ group_size) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- No variation exists for this variable. -->
+
+<!-- ```{r, results='asis', eval = F} -->
+<!-- df_w %>% -->
+<!--   filter(group_size %in% c(1, 4)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 5]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   filter(t1_instructional_focus %in% c("Comprehension", "Combo")) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_instructional_focus) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Instructional focus")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance)) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+
+<!-- ### Moderator analyses [Control for Type] -->
+
+<!-- #### Decoding -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ grade + type) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_number_of_hours + type) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ location + type) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_group_size_more_than_1 + type) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_tech_techplus + type) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_tech_type + type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_instructional_focus + type) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ dissertation + type) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ teacher_training + type) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher Training")) -->
+<!-- ``` -->
+
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ disabilities_inc + type) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ low_ses + type) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ l2inc + type) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ adaptive + type) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ gamification + type) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ personalization_inc + type) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ integrated + type) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ factor(stance) + type) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ l2targeted + type) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+<!-- Group size 2 or 3 has larger effects than group size 1, but not statistically significant. -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(group_size %in% c(1, 2, 3)) %>% -->
+<!--   mutate(group_size = if_else(group_size == 1, "1", "2-3")) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ group_size + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- No group size 4 for decoding studies. -->
+
+
+
+<!-- Group size [1 v 5]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(t1_instructional_focus %in% c("Comprehension", "Combo")) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_instructional_focus + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Instructional focus")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+<!-- Stance 2 effect sizes are lower than Stance 1 effect sizes. The difference is not statistically significant though. -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_d %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+
+<!-- #### Reading Comprehension -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ grade + type) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_number_of_hours + type) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ location + type) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_group_size_more_than_1 + type) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_tech_techplus + type) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_tech_type + type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_instructional_focus + type) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ dissertation + type) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ teacher_training + type) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher training")) -->
+<!-- ``` -->
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ disabilities_inc + type) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ low_ses + type) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ l2inc + type) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ adaptive + type) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ gamification + type) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ personalization_inc + type) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ integrated + type) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ factor(stance) + type) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ l2targeted + type) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(group_size %in% c(1, 2, 3)) %>% -->
+<!--   mutate(group_size = if_else(group_size == 1, "1", "2-3")) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ group_size + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(group_size %in% c(1, 4)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Group size [1 v 5]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(t1_instructional_focus %in% c("Comprehension", "Combo")) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_instructional_focus + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Instructional focus")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_c %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+
+<!-- #### Language Comprehension -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ grade + type) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_number_of_hours + type) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ location + type) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_group_size_more_than_1 + type) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_tech_techplus + type) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_tech_type + type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_instructional_focus + type) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ dissertation + type) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ teacher_training + type) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher training")) -->
+<!-- ``` -->
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ disabilities_inc + type) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ low_ses + type) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ l2inc + type) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ adaptive + type) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ gamification + type) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ personalization_inc + type) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ integrated + type) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ factor(stance) + type) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ l2targeted + type) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+<!-- No variation exists for this variable. -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- No variation exists for this variable. -->
+
+
+<!-- Group size [1 v 5]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   filter(t1_instructional_focus %in% c("Comprehension", "Combo")) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_instructional_focus + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Instructional focus")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_l %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+
+<!-- --- -->
+
+<!-- #### Writing Proficiency -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm1 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ design + type) -->
+<!-- lm2 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ grade + type) -->
+<!-- lm3 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_number_of_hours + type) -->
+<!-- lm4 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ location + type) -->
+<!-- lm5 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_group_size_more_than_1 + type) -->
+<!-- lm6 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_tech_techplus + type) -->
+<!-- lm7 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_tech_type + type) -->
+<!-- lm8 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_instructional_focus + type) -->
+<!-- lm9 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ dissertation + type) -->
+<!-- lm9.5 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ teacher_training + type) -->
+
+<!-- knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm9.5), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Design", "Grade", "Hours", "Location", "Group size", "Tech", "Tech type", "Instructional focus", "Dissertation", "Teacher training")) -->
+<!-- ``` -->
+
+
+<!-- Additional moderators: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- lm10 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ disabilities_inc + type) -->
+<!-- lm11 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ low_ses + type) -->
+<!-- lm12 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ l2inc + type) -->
+<!-- lm13 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ adaptive + type) -->
+<!-- lm14 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ gamification + type) -->
+<!-- lm15 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ personalization_inc + type) -->
+<!-- lm16 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ integrated + type) -->
+<!-- lm17 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ factor(stance) + type) -->
+<!-- lm18 <- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ l2targeted + type) -->
+
+<!-- knitreg(list(lm10, lm11, lm12, lm13, lm14, lm15, lm16, lm17, lm18), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Disabilities incl", "Low SES incl", "L2 incl", "Adaptive", "Gamification", "Personalized", "Integrated", "Stance", "L2 targeted")) -->
+<!-- ``` -->
+
+
+
+
+<!-- Group size [1 v (2 and 3)]: -->
+
+
+<!-- No variation exists for this variable. -->
+
+
+<!-- Group size [1 v 4]: -->
+
+<!-- No variation exists for this variable. -->
+
+
+<!-- Group size [1 v 5]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   filter(group_size %in% c(1, 5)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(group_size) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Group size")) -->
+<!-- ``` -->
+
+
+<!-- Instructional focus [2 (comprehension) vs 4 (combo)]: Not enough variation in data controlling for type. -->
+
+<!-- Pedagogical stance [1 vs 2]: -->
+
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   filter(stance > 0) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ factor(stance) + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance")) -->
+<!-- ``` -->
+
+
+<!-- Pedagogical stance [0 vs 1/2]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ stance_0_vs_12 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Pedagogical stance (0 vs 1/2)")) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r, results='asis'} -->
+<!-- df_w %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20 + type) %>%  -->
+<!--   knitreg(include.ci = F, stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, custom.model.names = c("Hours (more than 20)")) -->
+<!-- ``` -->
+
+
+
+
+<!-- --- -->
+
+<!-- ## Moderator analyses [with K, B, se, and p] -->
+
+<!-- ### Decoding -->
+
+<!-- Researcher-Developed vs standardized: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% -->
+<!--   mutate(custom = if_else(str_detect(type, "^DR"), 1L, 0L)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ custom) -->
+<!-- ``` -->
+
+
+<!-- Stance [0 vs 1/2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ stance_0_vs_12) -->
+<!-- ``` -->
+
+
+<!-- Stance [0 (comparison) vs 1 vs 2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ factor(stance)) -->
+<!-- ``` -->
+
+
+<!-- Tech vs tech plus: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- ``` -->
+
+
+<!-- Tech type [CAI (base) vs e-reader vs other]: -->
+
+<!-- No "Other" exists on Decoding. -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ t1_tech_type) -->
+<!-- ``` -->
+
+
+
+<!-- Gamification: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ gamification) -->
+<!-- ``` -->
+
+<!-- Adaptive: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ adaptive) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) -->
+<!-- ``` -->
+
+
+<!-- Grouping [1 vs rest combined]: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- ``` -->
+
+
+
+<!-- Grade [K-2 vs 3-5]: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ grade) -->
+<!-- ``` -->
+
+
+
+<!-- Low SES: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ low_ses) -->
+<!-- ``` -->
+
+
+
+<!-- L2+ included: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ l2inc) -->
+<!-- ``` -->
+
+
+
+<!-- Disability: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ disabilities_inc) -->
+<!-- ``` -->
+
+
+
+<!-- QED vs RCT: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ design) -->
+<!-- ``` -->
+
+
+<!-- ALT vs BAU: -->
+
+<!-- ```{r} -->
+<!-- df_d %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ c1_bau_alt) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+<!-- ### Reading Comprehension -->
+
+<!-- Researcher-Developed vs standardized: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% -->
+<!--   mutate(custom = if_else(str_detect(type, "^CR"), 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ custom) -->
+<!-- ``` -->
+
+
+<!-- Stance [0 vs 1/2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ stance_0_vs_12) -->
+<!-- ``` -->
+
+
+<!-- Stance [0 (comparison) vs 1 vs 2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ factor(stance)) -->
+<!-- ``` -->
+
+
+<!-- Tech vs tech plus: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- ``` -->
+
+
+<!-- Tech type [CAI (base) vs e-reader vs other]: -->
+
+<!-- No "e-reader" exists for Reading Comprehension. -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ t1_tech_type) -->
+<!-- ``` -->
+
+
+<!-- Gamification: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ gamification) -->
+<!-- ``` -->
+
+<!-- Adaptive: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ adaptive) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) -->
+<!-- ``` -->
+
+
+<!-- Grouping [1 vs rest combined]: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- ``` -->
+
+
+
+<!-- Grade [K-2 vs 3-5]: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ grade) -->
+<!-- ``` -->
+
+
+
+<!-- Low SES: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ low_ses) -->
+<!-- ``` -->
+
+
+
+<!-- L2+ model: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ l2inc) -->
+<!-- ``` -->
+
+
+
+<!-- Disability: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ disabilities_inc) -->
+<!-- ``` -->
+
+
+
+<!-- QED vs RCT: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ design) -->
+<!-- ``` -->
+
+
+<!-- ALT vs BAU: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ c1_bau_alt) -->
+<!-- ``` -->
+
+
+
+<!-- --- -->
+
+
+<!-- ### Listening Comprehension -->
+
+<!-- Researcher-Developed vs standardized: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% -->
+<!--   mutate(custom = if_else(str_detect(type, "^LR"), 1L, 0L)) %>% #tabyl(type, custom) -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ custom) -->
+<!-- ``` -->
+
+<!-- Stance [0 vs 1/2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ stance_0_vs_12) -->
+<!-- ``` -->
+
+
+<!-- Stance [0 (comparison) vs 1 vs 2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ factor(stance)) -->
+<!-- ``` -->
+
+
+<!-- Tech vs tech plus: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- ``` -->
+
+
+<!-- Tech type [CAI (base) vs e-reader vs other]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ t1_tech_type) -->
+<!-- ``` -->
+
+
+
+<!-- Gamification: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ gamification) -->
+<!-- ``` -->
+
+<!-- Adaptive: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ adaptive) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) -->
+<!-- ``` -->
+
+
+<!-- Grouping [1 vs rest combined]: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- ``` -->
+
+
+
+<!-- Grade [K-2 vs 3-5]: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ grade) -->
+<!-- ``` -->
+
+
+
+<!-- Low SES: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ low_ses) -->
+<!-- ``` -->
+
+
+
+<!-- L2+ model: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ l2inc) -->
+<!-- ``` -->
+
+
+
+<!-- Disability: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ disabilities_inc) -->
+<!-- ``` -->
+
+
+
+<!-- QED vs RCT: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ design) -->
+<!-- ``` -->
+
+
+<!-- ALT vs BAU: -->
+
+<!-- ```{r} -->
+<!-- df_l %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ c1_bau_alt) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+<!-- ### Writing -->
+
+<!-- Researcher-Developed vs standardized: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% -->
+<!--   mutate(custom = if_else(str_detect(type, "^WPR"), 1L, 0L)) %>% -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ custom) -->
+<!-- ``` -->
+
+
+<!-- Stance [0 vs 1/2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ stance_0_vs_12) -->
+<!-- ``` -->
+
+
+<!-- Stance [0 (comparison) vs 1 vs 2]: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ factor(stance)) -->
+<!-- ``` -->
+
+
+<!-- Tech vs tech plus: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_tech_techplus) -->
+<!-- ``` -->
+
+
+<!-- Tech type [CAI (base) vs e-reader vs other]: -->
+
+<!-- No "e-reader" level for Writing. -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ t1_tech_type) -->
+<!-- ``` -->
+
+
+<!-- Gamification: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ gamification) -->
+<!-- ``` -->
+
+<!-- Adaptive: -->
+
+<!-- ```{r} -->
+<!-- rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ adaptive) -->
+<!-- ``` -->
+
+
+<!-- Hours [more than 20]: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% -->
+<!--   mutate(hours_more_than_20 = if_else(t1_number_of_hours > 20, 1L, 0L)) %>%  -->
+<!--   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ hours_more_than_20) -->
+<!-- ``` -->
+
+
+<!-- Grouping [1 vs rest combined]: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ t1_group_size_more_than_1) -->
+<!-- ``` -->
+
+
+
+<!-- Grade [K-2 vs 3-5]: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ grade) -->
+<!-- ``` -->
+
+
+
+<!-- Low SES: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ low_ses) -->
+<!-- ``` -->
+
+
+
+<!-- L2+ model: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ l2inc) -->
+<!-- ``` -->
+
+
+
+<!-- Disability: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ disabilities_inc) -->
+<!-- ``` -->
+
+
+
+<!-- QED vs RCT: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ design) -->
+<!-- ``` -->
+
+
+<!-- ALT vs BAU: No variation in data along levels -->
+
+
+
+<!-- --- -->
+
+
+<!-- ## Publication Bias -->
+
+<!-- ### Funnel Plots -->
+
+<!-- Decoding (Constrained skills): -->
+
+
+<!-- ```{r, fig.retina=4} -->
+<!-- df_d %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   funnel(xlab = "Constrained Skills Effect Size", pch = 21, bg = "grey") -->
+<!-- ``` -->
+
+
+<!-- Reading Comprehension: -->
+
+<!-- ```{r, fig.retina=4} -->
+<!-- df_c %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   funnel(xlab = "Reading Comprehension Effect Size", pch = 21, bg = "grey") -->
+<!-- ``` -->
+
+<!-- Language Comprehension (Unconstrained skills): -->
+
+
+<!-- ```{r, fig.retina=4} -->
+<!-- df_l %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   funnel(xlab = "Unconstrained Skills Effect Size", pch = 21, bg = "grey") -->
+<!-- ``` -->
+
+<!-- Writing: -->
+
+
+<!-- ```{r, fig.retina=4} -->
+<!-- df_w %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   funnel(xlab = "Writing Effect Size", pch = 21, bg = "grey") -->
+<!-- ``` -->
+
+<!-- ### Egger's Tests -->
+
+<!-- Decoding (Constrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_d %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   regtest(model = "rma", predictor = "sei") -->
+<!-- ``` -->
+
+<!-- Reading Comprehension: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   regtest(model = "rma", predictor = "sei") -->
+<!-- ``` -->
+
+<!-- Language Comprehension (Unconstrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_l %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   regtest(model = "rma", predictor = "sei") -->
+<!-- ``` -->
+
+<!-- Writing: -->
+
+<!-- ```{r} -->
+<!-- df_w %>% -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     mods = ~ type, -->
+<!--     method = "REML" -->
+<!--   ) %>% -->
+<!--   regtest(model = "rma", predictor = "sei") -->
+<!-- ``` -->
+
+<!-- ### P-curves -->
+
+<!-- Decoding (Constrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_d %>%  -->
+<!--   mutate( -->
+<!--     SE = sqrt(EV) -->
+<!--   ) %>%  -->
+<!--   meta::metagen( -->
+<!--     ES, -->
+<!--     SE, -->
+<!--     data = ., -->
+<!--     comb.fixed = F, -->
+<!--     comb.random = T, -->
+<!--     method.tau = "REML", -->
+<!--     hakn = T, -->
+<!--     sm = "SMD" -->
+<!--   ) %>%  -->
+<!--   pcurve() -->
+<!-- ``` -->
+
+<!-- Reading Comprehension: -->
+
+<!-- ```{r} -->
+<!-- df_c %>%  -->
+<!--   mutate( -->
+<!--     SE = sqrt(EV) -->
+<!--   ) %>%  -->
+<!--   meta::metagen( -->
+<!--     ES, -->
+<!--     SE, -->
+<!--     data = ., -->
+<!--     comb.fixed = F, -->
+<!--     comb.random = T, -->
+<!--     method.tau = "REML", -->
+<!--     hakn = T, -->
+<!--     sm = "SMD" -->
+<!--   ) %>%  -->
+<!--   pcurve() -->
+<!-- ``` -->
+
+<!-- Language Comprehension (Unconstrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_l %>%  -->
+<!--   mutate( -->
+<!--     SE = sqrt(EV) -->
+<!--   ) %>%  -->
+<!--   meta::metagen( -->
+<!--     ES, -->
+<!--     SE, -->
+<!--     data = ., -->
+<!--     comb.fixed = F, -->
+<!--     comb.random = T, -->
+<!--     method.tau = "REML", -->
+<!--     hakn = T, -->
+<!--     sm = "SMD" -->
+<!--   ) %>%  -->
+<!--   pcurve() -->
+<!-- ``` -->
+
+<!-- Writing: -->
+
+<!-- ```{r} -->
+<!-- df_w %>%  -->
+<!--   mutate( -->
+<!--     SE = sqrt(EV) -->
+<!--   ) %>%  -->
+<!--   meta::metagen( -->
+<!--     ES, -->
+<!--     SE, -->
+<!--     data = ., -->
+<!--     comb.fixed = F, -->
+<!--     comb.random = T, -->
+<!--     method.tau = "REML", -->
+<!--     hakn = T, -->
+<!--     sm = "SMD" -->
+<!--   ) %>%  -->
+<!--   pcurve() -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+
+<!-- ## Sensitivity analyses -->
+
+<!-- ### Exclude high selection risk studies [Keep RCTs only] -->
+
+
+<!-- Decoding (Constrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_d %>% -->
+<!--   filter(design == "RCT") %>%  -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+
+<!-- Reading Comprehension: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% -->
+<!--   filter(design == "RCT") %>%  -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+
+
+<!-- Language Comprehension (Unconstrained skills): -->
+
+
+<!-- ```{r} -->
+<!-- df_l %>% -->
+<!--   filter(design == "RCT") %>%  -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+
+<!-- Writing: -->
+
+
+<!-- ```{r} -->
+<!-- df_w %>% -->
+<!--   filter(design == "RCT") %>%  -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+<!-- ### Constrain outliers by Winsorizing -->
+
+<!-- Decoding (Constrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_d %>% -->
+<!--   mutate( -->
+<!--     ES = DescTools::Winsorize(ES) -->
+<!--   ) %>%  -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+
+
+<!-- Reading Comprehension: -->
+
+<!-- ```{r} -->
+<!-- df_c %>% -->
+<!--   mutate( -->
+<!--     ES = DescTools::Winsorize(ES) -->
+<!--   ) %>%   -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+
+
+<!-- Language Comprehension (Unconstrained skills): -->
+
+
+<!-- ```{r} -->
+<!-- df_l %>% -->
+<!--   mutate( -->
+<!--     ES = DescTools::Winsorize(ES) -->
+<!--   ) %>%  -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+
+
+<!-- Writing: -->
+
+
+<!-- ```{r} -->
+<!-- df_w %>% -->
+<!--   mutate( -->
+<!--     ES = DescTools::Winsorize(ES) -->
+<!--   ) %>%  -->
+<!--   rma( -->
+<!--     yi = ES,  -->
+<!--     vi = EV,  -->
+<!--     data = .,  -->
+<!--     method = "REML" -->
+<!--   ) -->
+<!-- ``` -->
+
+<!-- --- -->
+
+<!-- ### Changing within study correlations (when aggregating effect sizes within a study) -->
+
+<!-- Decoding (Constrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_append %>%  -->
+<!--   filter(str_detect(type, "^D")) %>% -->
+<!--   robu( -->
+<!--     formula = ES ~ 1,  -->
+<!--     var.eff.size = EV,  -->
+<!--     studynum = stdid, -->
+<!--     data = .,  -->
+<!--     modelweights = "CORR" -->
+<!--     ) %>%  -->
+<!--   sensitivity() -->
+<!-- ``` -->
+
+
+<!-- Reading Comprehension: -->
+
+<!-- ```{r} -->
+<!-- df_append %>%  -->
+<!--   filter(str_detect(type, "^C")) %>% -->
+<!--   robu( -->
+<!--     formula = ES ~ 1,  -->
+<!--     var.eff.size = EV,  -->
+<!--     studynum = stdid, -->
+<!--     data = .,  -->
+<!--     modelweights = "CORR" -->
+<!--     ) %>%  -->
+<!--   sensitivity() -->
+<!-- ``` -->
+
+
+<!-- Listening Comprehension (Unconstrained skills): -->
+
+<!-- ```{r} -->
+<!-- df_append %>%  -->
+<!--   filter(str_detect(type, "^L")) %>% -->
+<!--   robu( -->
+<!--     formula = ES ~ 1,  -->
+<!--     var.eff.size = EV,  -->
+<!--     studynum = stdid, -->
+<!--     data = .,  -->
+<!--     modelweights = "CORR" -->
+<!--     ) %>%  -->
+<!--   sensitivity() -->
+<!-- ``` -->
+
+
+<!-- Writing: -->
+
+<!-- ```{r} -->
+<!-- df_append %>%  -->
+<!--   filter(str_detect(type, "^W")) %>% -->
+<!--   robu( -->
+<!--     formula = ES ~ 1,  -->
+<!--     var.eff.size = EV,  -->
+<!--     studynum = stdid, -->
+<!--     data = .,  -->
+<!--     modelweights = "CORR" -->
+<!--     ) %>%  -->
+<!--   sensitivity() -->
+<!-- ``` -->
 
 
 
