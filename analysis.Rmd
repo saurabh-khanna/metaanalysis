@@ -618,7 +618,7 @@ df_clean %>%
 
 ### Synthesizing effect sizes
 
-#### Decoding
+#### Code-related
 
 ```{r}
 model_d <-
@@ -729,7 +729,7 @@ c2 <- c1 + nrow(df_d %>% filter(type == "DRP")) - 1
 
 forest(
   model_d,
-  xlab = "Decoding Related Skills",
+  xlab = "Code Related Skills",
   addcred = T, 
   header = T,
   xlim = c(-6, 6),
@@ -852,7 +852,7 @@ addpoly(model_csn, row = 2, cex = 1.25, col = "white", lwd = 3)
 <br/>
 
 
-#### Language Comprehension
+#### Language-focused
 
 ```{r}
 model_l <-
@@ -966,7 +966,7 @@ c2 <- c1 + nrow(df_l %>% filter(type == "LRP")) - 1
 
 forest(
   model_l,
-  xlab = "Language Comprehension Related Skills",
+  xlab = "Language Focused Skills",
   addcred = T, 
   header = T,
   xlim = c(-7, 7),
@@ -1102,19 +1102,19 @@ df_clean %>%
 
 <br/><br/>
 
-#### Comparing Across Outcomes (Decoding/ReadingComp/LanguageComp/Writing)
+#### Comparing Across Outcomes (Code-related/ReadingComp/LanguageComp/Writing)
 
 ```{r}
 df_clean %>%
   mutate(
     outcome = case_when(
-      str_detect(type, "^D") ~ "Decoding",
+      str_detect(type, "^D") ~ "Code-related",
       str_detect(type, "^C") ~ "Reading Comp",
       str_detect(type, "^L") ~ "Language Comp",
       str_detect(type, "^W") ~ "Writing",
       TRUE ~ NA_character_
     ) %>% 
-    factor(levels = c("Decoding", "Reading Comp", "Language Comp", "Writing")),
+    factor(levels = c("Code-related", "Reading Comp", "Language Comp", "Writing")),
   ) %>% 
   rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ outcome)
 ```
@@ -1124,7 +1124,7 @@ df_clean %>%
 
 <br/><br/>
 
-#### Decoding
+#### Code-related
 
 Measure type (Custom distal, Custom proximal, Standardized):
 
@@ -1344,7 +1344,7 @@ rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ avghrs)
 
 <br/>
 
-#### Language Comprehension
+#### Language-focused
 
 Measure type (Custom distal, Custom proximal, Standardized):
 
@@ -1565,11 +1565,125 @@ rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ avghrs)
 
 <br/><br/>
 
+
+## Additional Moderator Analysis
+
+### Multiple Meta Regressions
+
+**Code-related**
+
+```{r, results='asis'}
+lm1 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type)
+lm2 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design)
+lm3 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control)
+lm4 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade)
+lm5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs)
+lm6 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1)
+lm7 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech)
+lm8 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context)
+lm9 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy)
+lm10 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification)
+lm11 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity)
+lm12 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity + feedback)
+
+knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm10, lm11, lm12), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 2, caption = "")
+```
+
+
+**Reading Comprehension**
+
+```{r, results='asis'}
+lm1 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type)
+lm2 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design)
+lm3 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control)
+lm4 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade)
+lm5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs)
+lm6 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1)
+lm7 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech)
+lm8 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context)
+lm9 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy)
+lm10 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification)
+lm11 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity)
+lm12 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity + feedback)
+
+knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm10, lm11, lm12), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 2, caption = "")
+```
+
+
+**Language-focused**
+
+```{r, results='asis'}
+lm1 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type)
+lm2 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design)
+lm3 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control)
+lm4 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade)
+lm5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs)
+lm6 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1)
+lm7 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech)
+lm8 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context)
+lm9 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy)
+lm10 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification)
+lm11 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity)
+lm12 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity + feedback)
+
+knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm10, lm11, lm12), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 2, caption = "")
+```
+
+
+
+### Pedagogy pairwise contrasts
+
+**Code-related**
+
+Pedagogical Orientation: Behavorial vs Cognitive
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(pedagogy != "Constructivist"), method = "REML", mods = ~ pedagogy)
+```
+
+Pedagogical Orientation: Behavorial vs Constructivist
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(pedagogy != "Cognitive"), method = "REML", mods = ~ pedagogy)
+```
+
+Pedagogical Orientation: Cognitive vs Constructivist
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(pedagogy != "Behavioral"), method = "REML", mods = ~ pedagogy)
+```
+
+----
+
+**Language-focused**
+
+Pedagogical Orientation: Behavorial vs Cognitive
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(pedagogy != "Constructivist"), method = "REML", mods = ~ pedagogy)
+```
+
+Pedagogical Orientation: Behavorial vs Constructivist
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(pedagogy != "Cognitive"), method = "REML", mods = ~ pedagogy)
+```
+
+Pedagogical Orientation: Cognitive vs Constructivist
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(pedagogy != "Behavioral"), method = "REML", mods = ~ pedagogy)
+```
+
+----
+
+
+
 ## Publication Bias
 
 ### Funnel Plots
 
-Decoding:
+Code-related:
 
 
 ```{r, fig.retina=4}
@@ -1581,7 +1695,7 @@ df_d %>%
     mods = ~ type,
     method = "REML"
   ) %>%
-  funnel(xlab = "Decoding Effect Size", pch = 21, bg = "grey")
+  funnel(xlab = "Code-related Effect Size", pch = 21, bg = "grey")
 ```
 
 
@@ -1599,7 +1713,7 @@ df_c %>%
   funnel(xlab = "Reading Comprehension Effect Size", pch = 21, bg = "grey")
 ```
 
-Language Comprehension:
+Language-focused:
 
 
 ```{r, fig.retina=4}
@@ -1611,7 +1725,7 @@ df_l %>%
     mods = ~ type,
     method = "REML"
   ) %>%
-  funnel(xlab = "Language Comprehension Effect Size", pch = 21, bg = "grey")
+  funnel(xlab = "Language Focused Effect Size", pch = 21, bg = "grey")
 ```
 
 Writing:
@@ -1631,7 +1745,7 @@ df_w %>%
 
 ### Egger's Tests
 
-Decoding:
+Code-related:
 
 ```{r}
 x <-
@@ -1663,7 +1777,7 @@ x <-
 regtest(x, model = "rma", predictor = "sei")
 ```
 
-Language Comprehension:
+Language-focused:
 
 ```{r}
 x <-
@@ -1697,7 +1811,7 @@ regtest(x, model = "rma", predictor = "sei")
 
 ### P-curves
 
-Decoding:
+Code-related:
 
 ```{r}
 df_d %>%
@@ -1737,7 +1851,7 @@ df_c %>%
   pcurve()
 ```
 
-Language Comprehension:
+Language-focused:
 
 ```{r}
 df_l %>%
@@ -1786,7 +1900,7 @@ df_w %>%
 
 ### Exclude high selection risk studies [Keep RCTs only]
 
-Decoding:
+Code-related:
 
 ```{r}
 df_d %>%
@@ -1815,7 +1929,7 @@ df_c %>%
 
 
 
-Language Comprehension:
+Language-focused:
 
 
 ```{r}
@@ -1849,7 +1963,7 @@ df_w %>%
 
 ### Constrain outliers by Winsorizing
 
-Decoding:
+Code-related:
 
 ```{r}
 df_d %>%
@@ -1883,7 +1997,7 @@ df_c %>%
 
 
 
-Language Comprehension:
+Language-focused:
 
 
 ```{r}
@@ -1923,7 +2037,7 @@ df_w %>%
 
 ### Changing within study correlations (when aggregating effect sizes within a study)
 
-#### Decoding
+#### Code-related
 
 _r = 0:_
 
@@ -2037,7 +2151,7 @@ df_append %>%
 ```
 
 
-#### Language Comprehension
+#### Language-focused
 
 _r = 0:_
 
