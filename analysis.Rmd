@@ -567,15 +567,11 @@ moderators <-
     teach_tr = if_else(teach_tr == "Yes", 1L, 0L),
     design = design %>% factor(levels = c("QED", "RCT")),
     control = control %>% factor(levels = c("ALT", "BAU")),
-    avghrs = case_when(
-      avghrs >= 0 & avghrs <= 10 ~ "0-10",
-      avghrs > 10 & avghrs <= 20 ~ "11-20",
-      avghrs > 20 & avghrs <= 30 ~ "21-30",
-      avghrs > 30 & avghrs <= 40 ~ "31-40",
-      avghrs > 40 & avghrs <= 50 ~ "41-50",
-      avghrs > 50 ~ "50+",
-      TRUE ~ NA_character_
-    ) %>% factor(levels = c("0-10", "11-20", "21-30", "31-40", "41-50", "50+"))
+    avghrs,
+    avghrs_categories = ntile(avghrs, 3),
+    avghrs_categories =
+      if_else(avghrs_categories == 1, 'Low', if_else(avghrs_categories == 2, 'Medium', 'High')) %>%
+      factor(levels = c("Low", "Medium", "High"))
   )
 
 
@@ -1568,68 +1564,298 @@ rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ avghrs)
 
 ## Additional Moderator Analysis
 
+### Pairwise comparison by outcome type
+
+**Code-related**
+
+DRD vs DRP:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(type != "DSN"), method = "REML", mods = ~ type)
+```
+
+
+DRD vs DSN:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(type != "DRP"), method = "REML", mods = ~ type)
+```
+
+
+DSN vs DRP:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(type != "DRD"), method = "REML", mods = ~ type)
+```
+
+---
+
+**Reading Comprehension**
+
+CRD vs CSN:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type)
+```
+
+---
+
+**Language-focused**
+
+LRD vs LRP:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(type != "LSN"), method = "REML", mods = ~ type)
+```
+
+
+LRD vs LSN:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(type != "LRP"), method = "REML", mods = ~ type)
+```
+
+
+LSN vs LRP:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(type != "LRD"), method = "REML", mods = ~ type)
+```
+
+---
+
+**Writing**
+
+WPRD vs WPSN:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ type)
+```
+
+
+---
+
+<br/><br/>
+
+### Time categories
+
+**Code-related**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ avghrs_categories)
+```
+
+
+**Reading Comprehension**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ avghrs_categories)
+```
+
+
+**Language-focused**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ avghrs_categories)
+```
+
+
+**Writing**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ avghrs_categories)
+```
+
+---
+
+
+### Time Continuous
+
+**Code-related**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ avghrs)
+```
+
+
+**Reading Comprehension**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ avghrs)
+```
+
+
+**Language-focused**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ avghrs)
+```
+
+
+**Writing**
+
+```{r}
+rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ avghrs)
+```
+
+
+---
+
+### Time categories pairwise contrasts
+
+**Code-related**
+
+Low vs Medium:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(avghrs_categories != "High"), method = "REML", mods = ~ avghrs_categories)
+```
+
+Medium vs High:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(avghrs_categories != "Low"), method = "REML", mods = ~ avghrs_categories)
+```
+
+High vs Low:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(avghrs_categories != "Medium"), method = "REML", mods = ~ avghrs_categories)
+```
+
+----
+
+**Reading Comprehension**
+
+Low vs Medium:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c %>% filter(avghrs_categories != "High"), method = "REML", mods = ~ avghrs_categories)
+```
+
+Medium vs High:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c %>% filter(avghrs_categories != "Low"), method = "REML", mods = ~ avghrs_categories)
+```
+
+High vs Low:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c %>% filter(avghrs_categories != "Medium"), method = "REML", mods = ~ avghrs_categories)
+```
+
+----
+
+**Language-focused**
+
+Low vs Medium:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(avghrs_categories != "High"), method = "REML", mods = ~ avghrs_categories)
+```
+
+Medium vs High:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(avghrs_categories != "Low"), method = "REML", mods = ~ avghrs_categories)
+```
+
+High vs Low:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(avghrs_categories != "Medium"), method = "REML", mods = ~ avghrs_categories)
+```
+
+----
+
+**Writing**
+
+Low vs Medium:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_w %>% filter(avghrs_categories != "High"), method = "REML", mods = ~ avghrs_categories)
+```
+
+Medium vs High:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_w %>% filter(avghrs_categories != "Low"), method = "REML", mods = ~ avghrs_categories)
+```
+
+High vs Low:
+
+```{r}
+rma(yi = ES, vi = EV, data = df_w %>% filter(avghrs_categories != "Medium"), method = "REML", mods = ~ avghrs_categories)
+```
+
+
+----
+
+<br/><br/>
+
+
 ### Multiple Meta Regressions
 
 **Code-related**
 
 ```{r, results='asis'}
-lm1 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type)
-lm2 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design)
-lm3 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control)
-lm4 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade)
-lm5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs)
-lm6 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1)
-lm7 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech)
-lm8 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context)
-lm9 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy)
-lm10 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification)
-lm11 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity)
-lm12 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity + feedback)
+lm1 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design)
 
-knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm10, lm11, lm12), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 2, caption = "")
+lm2 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type)
+
+lm3 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories)
+
+lm4 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy)
+
+lm5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade)
+
+lm6 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade + low_income_included)
+
+knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
 ```
 
 
 **Reading Comprehension**
 
 ```{r, results='asis'}
-lm1 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type)
-lm2 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design)
-lm3 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control)
-lm4 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade)
-lm5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs)
-lm6 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1)
-lm7 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech)
-lm8 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context)
-lm9 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy)
-lm10 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification)
-lm11 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity)
-lm12 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity + feedback)
+lm1 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design)
 
-knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm10, lm11, lm12), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 2, caption = "")
+lm2 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type)
+
+lm3 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories)
+
+lm4 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy)
+
+lm5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade)
+
+lm6 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade + low_income_included)
+
+knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
 ```
 
 
 **Language-focused**
 
 ```{r, results='asis'}
-lm1 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type)
-lm2 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design)
-lm3 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control)
-lm4 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade)
-lm5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs)
-lm6 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1)
-lm7 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech)
-lm8 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context)
-lm9 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy)
-lm10 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification)
-lm11 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity)
-lm12 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + design + control + grade + avghrs + tech_plus1 + typetech + instructional_context + pedagogy + gamification + adaptivity + feedback)
+lm1 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design)
 
-knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9, lm10, lm11, lm12), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 2, caption = "")
+lm2 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type)
+
+lm3 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories)
+
+lm4 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy)
+
+lm5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade)
+
+lm6 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade + low_income_included)
+
+knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
 ```
 
+----
 
+<br/><br/>
 
 ### Pedagogy pairwise contrasts
 
