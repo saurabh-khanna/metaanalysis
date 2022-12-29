@@ -605,6 +605,14 @@ df_clean %>%
   select(`Author (Year)` = AUTYR, type, ES, EV) %>% 
   mutate_if(is.numeric, ~ round(., 4)) %>% 
   datatable()
+
+# df_clean %>%
+#   relocate(AUTYR, stdid) %>%
+#   arrange(AUTYR, type) %>% 
+#   relocate(`Study ID` = stdid, `Author (Year)` = AUTYR, `Outcome type` = type, `Effect Size` = ES, `Effect Size Variance` = EV) %>%
+#   clean_names(case = "title") %>% 
+#   mutate_if(is.numeric, ~ round(., 4)) %>% 
+#   writexl::write_xlsx(here::here("data_ed_tech_meta.xlsx"))
 ```
 
 
@@ -1919,9 +1927,14 @@ df_d %>%
     vi = EV,
     data = .,
     mods = ~ type,
-    method = "REML"
+    method = "REML",
+    slab = AUTYR
   ) %>%
   funnel(xlab = "Code-related Effect Size", pch = 21, bg = "grey")
+```
+
+```{r, eval=F}
+df_l %>% filter(str_detect(AUTYR, "Korat")) %>% arrange(AUTYR)
 ```
 
 
@@ -1949,7 +1962,8 @@ df_l %>%
     vi = EV,
     data = .,
     mods = ~ type,
-    method = "REML"
+    method = "REML",
+    slab = AUTYR
   ) %>%
   funnel(xlab = "Language Focused Effect Size", pch = 21, bg = "grey")
 ```
