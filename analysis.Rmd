@@ -4,8 +4,8 @@ date: "Updated: `r format(Sys.Date(), format='%B %d, %Y')`"
 output:
   html_document:
     toc: true
-    toc_depth: 5
-    number_sections: no
+    toc_depth: 6
+    number_sections: yes
 ---
 
 <br/>
@@ -136,7 +136,7 @@ df_raw <-
   ) %>%
   remove_empty() %>%
   select(-`Author (Year)`) %>% 
-  select(study_id, type, sort(current_vars()))
+  select(study_id, type, sort(tidyselect::peek_vars()))
 ```
 
 
@@ -152,7 +152,7 @@ df_hlm1 <-
   select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
   rename(study_id = `STUDYID`) %>%
   drop_na(study_id) %>%
-  select(study_id, type, msr, sort(current_vars())) %>% 
+  select(study_id, type, msr, sort(tidyselect::peek_vars())) %>% 
   remove_empty() %>% 
   pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
   remove_empty()
@@ -166,7 +166,7 @@ df_hlm2 <-
   select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
   rename(study_id = `STUDYID`) %>%
   drop_na(study_id) %>%
-  select(study_id, type, msr, sort(current_vars())) %>% 
+  select(study_id, type, msr, sort(tidyselect::peek_vars())) %>% 
   remove_empty() %>% 
   pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
   remove_empty()
@@ -181,7 +181,7 @@ df_hlm3 <-
   select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
   rename(study_id = `STUDYID`) %>%
   drop_na(study_id) %>%
-  select(study_id, type, msr, sort(current_vars())) %>% 
+  select(study_id, type, msr, sort(tidyselect::peek_vars())) %>% 
   remove_empty() %>% 
   pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
   remove_empty()
@@ -196,7 +196,7 @@ df_hlm4 <-
   select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
   rename(study_id = `STUDYID`) %>%
   drop_na(study_id) %>%
-  select(study_id, type, msr, sort(current_vars())) %>% 
+  select(study_id, type, msr, sort(tidyselect::peek_vars())) %>% 
   remove_empty() %>% 
   pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
   remove_empty()
@@ -212,7 +212,7 @@ df_hlm5 <-
   select(-c(Notes, `Author (Year)`, Outcome, Measure)) %>% 
   rename(study_id = `STUDYID`) %>%
   drop_na(study_id) %>%
-  select(study_id, type, msr, sort(current_vars())) %>% 
+  select(study_id, type, msr, sort(tidyselect::peek_vars())) %>% 
   remove_empty() %>% 
   pivot_wider(names_from = msr, values_from = c(-study_id, -type, -msr)) %>% 
   remove_empty()
@@ -313,41 +313,40 @@ df_raw %>% get_dupes(type, study_id) %>% remove_empty()
 ```
 
 
-### Study and measure overview
-
 ```{r}
 # Add in correct author (year)
 df_raw <-
   df_raw %>% 
   inner_join(
     read_xlsx(data_file, sheet = "All Studies") %>% 
-      select(study_id = `STUDYID`, AUTYR = `Author (Year)`) %>% 
+      select(study_id = `STUDYID`, AUTYR = `Author (Year)`) %>%
       drop_na(AUTYR),
     by = "study_id"
   ) %>% 
   relocate(type, study_id, AUTYR) %>% 
   arrange(type, study_id, AUTYR)
 
-df_raw %>%
-  mutate(
-    type = if_else(type == "WCSN", "DSN", type),
-    type = if_else(type == "WCRD", "DRD", type),
-  ) %>% 
-  distinct(AUTYR, type) %>% 
-  arrange(AUTYR, type) %>% 
-  group_by(AUTYR) %>% 
-  mutate(n = row_number()) %>%
-  ungroup() %>% 
-  pivot_wider(names_from = n, values_from = type, names_prefix = "Measure ") %>% 
-  rename(`Author (Year)` = AUTYR) %>% 
-  datatable()
+# generate this table later after combining in direct ESs
+# df_raw %>%
+#   mutate(
+#     type = if_else(type == "WCSN", "DSN", type),
+#     type = if_else(type == "WCRD", "DRD", type),
+#   ) %>% 
+#   distinct(AUTYR, type) %>% 
+#   arrange(AUTYR, type) %>% 
+#   group_by(AUTYR) %>% 
+#   mutate(n = row_number()) %>%
+#   ungroup() %>% 
+#   pivot_wider(names_from = n, values_from = type, names_prefix = "Measure ") %>% 
+#   rename(`Author (Year)` = AUTYR) %>% 
+#   datatable()
 ```
 
 ---
 
 <br/>
 
-### Calculating effect sizes
+# Calculating effect sizes
 
 
 ```{r}
@@ -577,7 +576,7 @@ moderators <-
 
 df_clean <-
   df_clean %>%
-  left_join(moderators, by = "stdid") %>%
+  inner_join(moderators, by = "stdid") %>%
   relocate(type, stdid, AUTYR) %>%
   arrange(type, stdid, AUTYR)
 
@@ -595,15 +594,37 @@ df_w <- df_clean %>% filter(type %in% c("WPRD", "WPSN"))
 ```
 
 
+Study and measure overview [223 total measures across 120 studies]:
+
+```{r}
+df_clean %>%
+  mutate(
+    type = if_else(type == "WCSN", "DSN", type),
+    type = if_else(type == "WCRD", "DRD", type),
+  ) %>% 
+  distinct(AUTYR, type) %>% 
+  arrange(AUTYR, type) %>% 
+  group_by(AUTYR) %>% 
+  mutate(n = row_number()) %>%
+  ungroup() %>% 
+  pivot_wider(names_from = n, values_from = type, names_prefix = "Measure ") %>% 
+  rename(`Author (Year)` = AUTYR) %>%
+  datatable()
+```
+
+---
+
+<br/><br/>
+
+Effect size and its variance for all 223 study measures:
 
 ```{r}
 # displaying clean df
-
 df_clean %>%
   relocate(AUTYR, stdid) %>%
-  arrange(AUTYR, type) %>% 
+  arrange(AUTYR, type) %>%
   select(`Author (Year)` = AUTYR, type, ES, EV) %>% 
-  mutate_if(is.numeric, ~ round(., 4)) %>% 
+  mutate_if(is.numeric, ~ round(., 4)) %>%
   datatable()
 
 # df_clean %>%
@@ -620,9 +641,9 @@ df_clean %>%
 
 <br/>
 
-### Synthesizing effect sizes
+# Synthesizing effect sizes
 
-#### Code-related
+## Code-related
 
 ```{r}
 model_d <-
@@ -757,7 +778,7 @@ addpoly(model_dsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 
 <br/>
 
-#### Reading Comprehension
+## Reading Comprehension
 
 ```{r}
 model_c <-
@@ -797,6 +818,8 @@ model_csn <-
     method = "REML",
     slab = stdid
   )
+
+# df_c %>% count(type)
 ```
 
 
@@ -856,7 +879,7 @@ addpoly(model_csn, row = 2, cex = 1.25, col = "white", lwd = 3)
 <br/>
 
 
-#### Language-focused
+## Language-focused
 
 ```{r}
 model_l <-
@@ -920,7 +943,7 @@ model_lsn <-
   )
 
 # df_l %>% arrange(type, ES)
-# df_l %>% mutate(type = factor(type, levels = c("LRP", "LRD", "LSN"))) %>% count(type)
+# df_l %>% mutate(type = factor(type, levels = c("LRP", "LSN", "LRD"))) %>% count(type)
 ```
 
 
@@ -996,7 +1019,7 @@ addpoly(model_lsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 
 <br/>
 
-#### Writing Proficiency
+## Writing Proficiency
 
 ```{r}
 model_w <-
@@ -1092,13 +1115,13 @@ addpoly(model_wpsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 
 <br/>
 
-### Moderator analyses
+# Moderator analyses
 
 Descriptive summary of moderator variables used:
 
 ```{r}
 df_clean %>% 
-  select(6:21) %>%
+  select(6:22) %>%
   skim()
 ```
 
@@ -1106,7 +1129,7 @@ df_clean %>%
 
 <br/><br/>
 
-#### Comparing Across Outcomes (Code-related/ReadingComp/LanguageComp/Writing)
+## Comparing Across Outcomes (Code-related/ReadingComp/LanguageComp/Writing)
 
 ```{r}
 df_clean %>%
@@ -1128,7 +1151,7 @@ df_clean %>%
 
 <br/><br/>
 
-#### Code-related
+## Code-related
 
 Measure type (Custom distal, Custom proximal, Standardized):
 
@@ -1238,7 +1261,7 @@ rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ avghrs)
 
 <br/>
 
-#### Reading Comprehension
+## Reading Comprehension
 
 Measure type (Custom distal, Standardized):
 
@@ -1348,7 +1371,7 @@ rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ avghrs)
 
 <br/>
 
-#### Language-focused
+## Language-focused
 
 Measure type (Custom distal, Custom proximal, Standardized):
 
@@ -1459,7 +1482,7 @@ rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ avghrs)
 
 <br/>
 
-#### Writing
+## Writing
 
 Measure type (Custom distal, Standardized):
 
@@ -1570,27 +1593,27 @@ rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ avghrs)
 <br/><br/>
 
 
-## Additional Moderator Analysis
+# Additional Moderator Analysis
 
-### Pairwise comparison by outcome type
+## Pairwise comparison by outcome type
 
 **Code-related**
 
-DRD vs DRP:
+DRD vs DRP [No statistically significant difference]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_d %>% filter(type != "DSN"), method = "REML", mods = ~ type)
 ```
 
 
-DRD vs DSN:
+DRD vs DSN [Statistically significant difference of -0.2741, p = 0.0055]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_d %>% filter(type != "DRP"), method = "REML", mods = ~ type)
 ```
 
 
-DSN vs DRP:
+DSN vs DRP [No statistically significant difference]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_d %>% filter(type != "DRD"), method = "REML", mods = ~ type)
@@ -1600,7 +1623,7 @@ rma(yi = ES, vi = EV, data = df_d %>% filter(type != "DRD"), method = "REML", mo
 
 **Reading Comprehension**
 
-CRD vs CSN:
+CRD vs CSN [Statistically significant difference of -0.1806, p = 0.0193]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type)
@@ -1610,21 +1633,21 @@ rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type)
 
 **Language-focused**
 
-LRD vs LRP:
+LRD vs LRP [No statistically significant difference]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_l %>% filter(type != "LSN"), method = "REML", mods = ~ type)
 ```
 
 
-LRD vs LSN:
+LRD vs LSN [No statistically significant difference]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_l %>% filter(type != "LRP"), method = "REML", mods = ~ type)
 ```
 
 
-LSN vs LRP:
+LSN vs LRP [Statistically significant difference of -0.4423, p < 0.0001]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_l %>% filter(type != "LRD"), method = "REML", mods = ~ type)
@@ -1634,7 +1657,7 @@ rma(yi = ES, vi = EV, data = df_l %>% filter(type != "LRD"), method = "REML", mo
 
 **Writing**
 
-WPRD vs WPSN:
+WPRD vs WPSN [Statistica;;y significant difference of -0.5852, p = 0.0294]:
 
 ```{r}
 rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ type)
@@ -1645,7 +1668,7 @@ rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ type)
 
 <br/><br/>
 
-### Time categories
+## Time categories
 
 **Code-related**
 
@@ -1677,7 +1700,7 @@ rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ avghrs_categories)
 ---
 
 
-### Time Continuous
+## Time Continuous
 
 **Code-related**
 
@@ -1709,7 +1732,7 @@ rma(yi = ES, vi = EV, data = df_w, method = "REML", mods = ~ avghrs)
 
 ---
 
-### Time categories pairwise contrasts
+## Time categories pairwise contrasts
 
 **Code-related**
 
@@ -1803,7 +1826,7 @@ rma(yi = ES, vi = EV, data = df_w %>% filter(avghrs_categories != "Medium"), met
 <br/><br/>
 
 
-### Multiple Meta Regressions
+## Multiple Meta Regressions
 
 **Code-related**
 
@@ -1865,7 +1888,7 @@ knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6), stars = c(0.01, 0.05, 0.1), include.
 
 <br/><br/>
 
-### Pedagogy pairwise contrasts
+## Pedagogy pairwise contrasts
 
 **Code-related**
 
@@ -1913,9 +1936,9 @@ rma(yi = ES, vi = EV, data = df_l %>% filter(pedagogy != "Behavioral"), method =
 
 
 
-## Publication Bias
+# Publication Bias
 
-### Funnel Plots
+## Funnel Plots
 
 Code-related:
 
@@ -1983,7 +2006,7 @@ df_w %>%
   funnel(xlab = "Writing Effect Size", pch = 21, bg = "grey")
 ```
 
-### Egger's Tests
+## Egger's Tests
 
 Code-related:
 
@@ -2049,7 +2072,7 @@ x <-
 regtest(x, model = "rma", predictor = "sei")
 ```
 
-### P-curves
+## P-curves
 
 Code-related:
 
@@ -2136,9 +2159,9 @@ df_w %>%
 
 <br/><br/>
 
-## Sensitivity analyses
+# Sensitivity analyses
 
-### Exclude high selection risk studies [Keep RCTs only]
+## Exclude high selection risk studies [Keep RCTs only]
 
 Code-related:
 
@@ -2201,7 +2224,7 @@ df_w %>%
 
 ---
 
-### Constrain outliers by Winsorizing
+## Constrain outliers by Winsorizing
 
 Code-related:
 
@@ -2275,9 +2298,9 @@ df_w %>%
 
 <br/><br/>
 
-### Changing within study correlations (when aggregating effect sizes within a study)
+## Changing within study correlations (when aggregating effect sizes within a study)
 
-#### Code-related
+### Code-related
 
 _r = 0:_
 
@@ -2334,7 +2357,7 @@ df_append %>%
 ```
 
 
-#### Reading Comprehension
+### Reading Comprehension
 
 _r = 0:_
 
@@ -2391,7 +2414,7 @@ df_append %>%
 ```
 
 
-#### Language-focused
+### Language-focused
 
 _r = 0:_
 
@@ -2448,7 +2471,7 @@ df_append %>%
 ```
 
 
-#### Writing
+### Writing
 
 _r = 0:_
 
