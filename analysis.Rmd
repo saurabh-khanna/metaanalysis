@@ -601,7 +601,7 @@ df_clean %>%
   mutate(
     type = if_else(type == "WCSN", "DSN", type),
     type = if_else(type == "WCRD", "DRD", type),
-  ) %>% 
+  ) %>%
   distinct(AUTYR, type) %>% 
   arrange(AUTYR, type) %>% 
   group_by(AUTYR) %>% 
@@ -611,6 +611,8 @@ df_clean %>%
   rename(`Author (Year)` = AUTYR) %>%
   datatable()
 ```
+
+
 
 ---
 
@@ -1108,6 +1110,40 @@ text(-4, c(a2 + 2, b2 + 2), pos = 4, c("Standardized", "Researcher-Developed (Di
 
 addpoly(model_wprd, row = a2 + 4, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_wpsn, row = 2, cex = 1.25, col = "white", lwd = 3)
+```
+
+---
+
+## Verifying effect sizes using RVE (Robust Variance Estimation)
+
+As the dependency in our meta-analysis results from multiple measures nested within the same studies, we use the hierarchical effects weights to fit our model.
+
+Code-related:
+
+```{r}
+robu(ES ~ 1, data = df_d, studynum = stdid, var.eff.size = EV, modelweights = "HIER", small = TRUE)
+```
+
+
+Reading comprehension:
+
+```{r}
+robu(ES ~ 1, data = df_c, studynum = stdid, var.eff.size = EV, modelweights = "HIER", small = TRUE)
+```
+
+
+Language focused:
+
+```{r}
+robu(ES ~ 1, data = df_l, studynum = stdid, var.eff.size = EV, modelweights = "HIER", small = TRUE)
+```
+
+
+Writing proficiency (estimated using a correlation effects model because each of the 6 studies reports a single writing measure):
+
+
+```{r}
+robu(ES ~ 1, data = df_w, studynum = stdid, var.eff.size = EV, modelweights = "CORR", small = TRUE)
 ```
 
 
