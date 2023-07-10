@@ -6,6 +6,7 @@ output:
     toc: true
     toc_depth: 6
     number_sections: yes
+    df_print: paged
 ---
 
 <br/>
@@ -594,6 +595,7 @@ df_w <- df_clean %>% filter(type %in% c("WPRD", "WPSN"))
 ```
 
 
+
 Study and measure overview [223 total measures across 120 studies]:
 
 ```{r}
@@ -640,6 +642,60 @@ df_clean %>%
 
 
 ---
+
+<br/><br/>
+
+## Summarizing moderator counts
+
+Code-related:
+
+```{r}
+# summarizing moderator counts
+df_d %>% 
+  select(-c(1:5), -avghrs) %>% 
+  mutate_all(~ as_factor(.)) %>% 
+  skim() %>%
+  as_tibble() %>% 
+  select(moderator = skim_variable, top_counts = factor.top_counts, n_unique = factor.n_unique, n_missing) %>% 
+  arrange(moderator)
+```
+
+---
+
+<br/><br/>
+
+Language comprehension:
+
+```{r}
+# summarizing moderator counts
+df_l %>% 
+  select(-c(1:5), -avghrs) %>% 
+  mutate_all(~ as_factor(.)) %>% 
+  skim() %>%
+  as_tibble() %>% 
+  select(moderator = skim_variable, top_counts = factor.top_counts, n_unique = factor.n_unique, n_missing) %>% 
+  arrange(moderator)
+```
+
+---
+
+<br/><br/>
+
+Reading comprehension:
+
+```{r}
+# summarizing moderator counts
+df_c %>% 
+  select(-c(1:5), -avghrs) %>% 
+  mutate_all(~ as_factor(.)) %>% 
+  skim() %>%
+  as_tibble() %>% 
+  select(moderator = skim_variable, top_counts = factor.top_counts, n_unique = factor.n_unique, n_missing) %>% 
+  arrange(moderator)
+```
+
+---
+
 
 <br/>
 
@@ -1192,7 +1248,9 @@ df_clean %>%
 Measure type (Custom distal, Custom proximal, Standardized):
 
 ```{r}
-rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type)
+df_d %>%
+  mutate(type = as_factor(type) %>% fct_rev()) %>% 
+  rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ type)
 ```
 
 
@@ -1412,7 +1470,9 @@ rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ avghrs)
 Measure type (Custom distal, Custom proximal, Standardized):
 
 ```{r}
-rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type)
+df_l %>%
+  mutate(type = as_factor(type) %>% fct_rev()) %>% 
+  rma(yi = ES, vi = EV, data = ., method = "REML", mods = ~ type)
 ```
 
 
@@ -1967,6 +2027,84 @@ Pedagogical Orientation: Cognitive vs Constructivist
 ```{r}
 rma(yi = ES, vi = EV, data = df_l %>% filter(pedagogy != "Behavioral"), method = "REML", mods = ~ pedagogy)
 ```
+
+----
+
+<br/><br/>
+
+## Tech type pairwise contrasts
+
+**Code-related**
+
+Tech type: CAI vs ER
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(typetech != "Other"), method = "REML", mods = ~ typetech)
+```
+
+
+Tech type: CAI vs Other
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(typetech != "ER"), method = "REML", mods = ~ typetech)
+```
+
+
+Tech type: ER vs Other
+
+```{r}
+rma(yi = ES, vi = EV, data = df_d %>% filter(typetech != "CAI"), method = "REML", mods = ~ typetech)
+```
+
+---
+
+**Language focused**
+
+Tech type: CAI vs ER
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(typetech != "Other"), method = "REML", mods = ~ typetech)
+```
+
+
+Tech type: CAI vs Other
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(typetech != "ER"), method = "REML", mods = ~ typetech)
+```
+
+
+Tech type: ER vs Other
+
+```{r}
+rma(yi = ES, vi = EV, data = df_l %>% filter(typetech != "CAI"), method = "REML", mods = ~ typetech)
+```
+
+
+----
+
+**Reading Comprehension**
+
+Tech type: CAI vs ER
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c %>% filter(typetech != "Other"), method = "REML", mods = ~ typetech)
+```
+
+
+Tech type: CAI vs Other
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c %>% filter(typetech != "ER"), method = "REML", mods = ~ typetech)
+```
+
+
+Tech type: ER vs Other
+
+```{r}
+rma(yi = ES, vi = EV, data = df_c %>% filter(typetech != "CAI"), method = "REML", mods = ~ typetech)
+```
+
 
 ----
 
