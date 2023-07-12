@@ -1927,58 +1927,61 @@ rma(yi = ES, vi = EV, data = df_w %>% filter(avghrs_categories != "Medium"), met
 **Code-related**
 
 ```{r, results='asis'}
-lm1 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design)
+df_temp <- df_d %>% mutate(type = as_factor(type) %>% fct_rev())
 
-lm2 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type)
+lm2 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type)
 
-lm3 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories)
+lm3 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories)
 
-lm4 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy)
+lm4 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy)
 
-lm5 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade)
+lm5 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy + grade)
 
-lm6 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade + low_income_included)
+lm6 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy + grade + low_income_included)
 
-knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
+knitreg(list(lm2, lm3, lm4, lm5, lm6), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
 ```
 
 
 **Reading Comprehension**
 
 ```{r, results='asis'}
-lm1 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design)
+df_temp <- df_c %>% mutate(type = as_factor(type) %>% fct_rev())
 
-lm2 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type)
+lm2 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type)
 
-lm3 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories)
+lm3 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories)
 
-lm4 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy)
+lm4 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy)
 
-lm5 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade)
+lm5 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy + grade)
 
-lm6 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade + low_income_included)
+lm6 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy + grade + low_income_included)
 
-knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
+knitreg(list(lm2, lm3, lm4, lm5, lm6), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
 ```
 
 
 **Language-focused**
 
 ```{r, results='asis'}
-lm1 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design)
+df_temp <- df_l %>% mutate(type = as_factor(type) %>% fct_rev())
 
-lm2 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type)
+lm2 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type)
 
-lm3 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories)
+lm3 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories)
 
-lm4 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy)
+lm4 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy)
 
-lm5 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade)
+lm5 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy + grade)
 
-lm6 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ design + type + avghrs_categories + pedagogy + grade + low_income_included)
+lm6 <- rma(yi = ES, vi = EV, data = df_temp, method = "REML", mods = ~ type + avghrs_categories + pedagogy + grade + low_income_included)
 
-knitreg(list(lm1, lm2, lm3, lm4, lm5, lm6), stars = c(0.01, 0.05, 0.1), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
+knitreg(list(lm2, lm3, lm4, lm5, lm6), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
 ```
+
+
+
 
 ----
 
@@ -2698,6 +2701,68 @@ df_append %>%
     data = ., 
     method = "REML",
     digits = 2
+  )
+```
+
+
+---
+
+<br/><br/>
+
+# New results
+
+**Code-related:**
+
+```{r, results='asis'}
+df_d <- df_d %>% mutate(type = as_factor(type) %>% fct_rev())
+
+lm1 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + pedagogy)
+
+lm2 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + avghrs_categories)
+
+lm3 <- rma(yi = ES, vi = EV, data = df_d, method = "REML", mods = ~ type + avghrs_categories + pedagogy)
+
+knitreg(list(lm1, lm2, lm3), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
+```
+
+**Language-focused:**
+
+```{r, results='asis'}
+df_l <- df_l %>% mutate(type = as_factor(type) %>% fct_rev())
+
+lm1 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + pedagogy)
+
+lm2 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + avghrs_categories)
+
+lm3 <- rma(yi = ES, vi = EV, data = df_l, method = "REML", mods = ~ type + avghrs_categories + pedagogy)
+
+knitreg(list(lm1, lm2, lm3), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
+```
+
+**Reading Comprehension:**
+
+```{r, results='asis'}
+df_c <- df_c %>% mutate(type = as_factor(type) %>% fct_rev())
+
+lm1 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + pedagogy)
+
+lm2 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + avghrs_categories)
+
+lm3 <- rma(yi = ES, vi = EV, data = df_c, method = "REML", mods = ~ type + avghrs_categories + pedagogy)
+
+knitreg(list(lm1, lm2, lm3), include.ci = FALSE, dcolumn = TRUE, booktabs = TRUE, digits = 3, caption = "")
+```
+
+**Association between gamification and pedagogical orientation for 120 studies:**
+
+```{r}
+df_clean %>%
+  distinct(stdid, pedagogy, gamification) %>% 
+  mutate(n = 1) %>% 
+  group_by(pedagogy) %>%
+  summarise(
+    gamification = round(mean(gamification, na.rm = T) * 100, 2) %>% as.character() %>% str_c("%"),
+    count = sum(n, na.rm = T)
   )
 ```
 
