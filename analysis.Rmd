@@ -102,7 +102,8 @@ df_es_direct <-
       select(study_id = `STUDYID`, AUTYR = `Author (Year)`) %>% 
       drop_na(AUTYR),
     by = "study_id"
-  )
+  ) %>% 
+  distinct()
 ```
 
 
@@ -289,11 +290,13 @@ df_hlm <-
 # remove redundant dfs
 rm(df_hlm1, df_hlm2, df_hlm3, df_hlm4, df_hlm5)
 rm(df_es1, df_es2, df_es3, df_es4, df_es5, df_es6)
+
+# df_hlm %>% distinct(study_id)
 ```
 
 
 ```{r}
-df_raw <- bind_rows(df_raw, df_hlm)
+df_raw <- bind_rows(df_raw, df_hlm) %>% distinct()
 
 # remove redundant rows
 df_raw$na_count <- apply(df_raw, 1, function(x) sum(is.na(x)))
@@ -308,7 +311,6 @@ df_raw <- df_raw %>% filter(na_count < (ncol(df_raw) - 3))
 ```{r, eval=FALSE}
 # general checks
 df_raw %>% get_dupes()
-df_raw %>% count(type)
 df_raw %>% summarize_at(vars(1, 2, 210), ~ mean(is.na(.)))
 df_raw %>% get_dupes(type, study_id) %>% remove_empty()
 ```
@@ -326,21 +328,6 @@ df_raw <-
   ) %>% 
   relocate(type, study_id, AUTYR) %>% 
   arrange(type, study_id, AUTYR)
-
-# generate this table later after combining in direct ESs
-# df_raw %>%
-#   mutate(
-#     type = if_else(type == "WCSN", "DSN", type),
-#     type = if_else(type == "WCRD", "DRD", type),
-#   ) %>% 
-#   distinct(AUTYR, type) %>% 
-#   arrange(AUTYR, type) %>% 
-#   group_by(AUTYR) %>% 
-#   mutate(n = row_number()) %>%
-#   ungroup() %>% 
-#   pivot_wider(names_from = n, values_from = type, names_prefix = "Measure ") %>% 
-#   rename(`Author (Year)` = AUTYR) %>% 
-#   datatable()
 ```
 
 ---
@@ -390,7 +377,8 @@ df_post <-
       pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
       mutate(num = str_sub(num, 3)),
     by = c("study_id", "AUTYR", "type", "num")
-  )
+  ) %>% 
+  distinct()
 ```
 
 
@@ -413,7 +401,7 @@ for (a in 1:9) {
           m2i = df_prepost[, str_c("T", t, a, "MPre")] %>% unlist(),
           sd1i = df_prepost[, str_c("T", t, a, "SPre")] %>% unlist(),
           ni = df_prepost[, str_c("T", t, a, "NPost")] %>% unlist(),
-          ri = rep(0.5, 183),
+          ri = rep(0.5, 184),
           var.names = c(str_glue("TES{a}_{t}"), str_glue("TEV{a}_{t}"))
         )
     }
@@ -432,7 +420,7 @@ for (a in 1:9) {
           m2i = df_prepost[, str_c("C", c, a, "MPre")] %>% unlist(),
           sd1i = df_prepost[, str_c("C", c, a, "SPre")] %>% unlist(),
           ni = df_prepost[, str_c("C", c, a, "NPost")] %>% unlist(),
-          ri = rep(0.5, 183),
+          ri = rep(0.5, 184),
           var.names = c(str_glue("CES{a}_{c}"), str_glue("CEV{a}_{c}"))
         )
     }
@@ -476,7 +464,8 @@ df_prepost <-
       pivot_longer(cols = starts_with("EV"), names_to = "num", values_to = "EV", values_drop_na = T) %>% 
       mutate(num = str_sub(num, 3)),
     by = c("study_id", "AUTYR", "type", "num")
-  )
+  ) %>% 
+  distinct()
 ```
 
 
@@ -487,9 +476,10 @@ df_es_calc <-
     ES.x = if_else(is.na(ES.x) & !is.na(ES.y), ES.y, ES.x),
     EV.x = if_else(is.na(EV.x) & !is.na(EV.y), EV.y, EV.x)
   ) %>% 
-  select(study_id, AUTYR, type, ES = ES.x, EV = EV.x)
+  select(study_id, AUTYR, type, ES = ES.x, EV = EV.x) %>% 
+  distinct()
 
-# anti_join(df_post, df_prepost, by = c("study_id", "AUTYR", "type", "num")) %>% count(study_id)
+# anti_join(df_post, df_prepost, by = c("study_id", "AUTYR", "type", "num"))
 ```
 
 
@@ -497,7 +487,7 @@ df_es_calc <-
 ```{r, fig.retina=4}
 #### Combining all
 df_append <- 
-  bind_rows(df_es_calc, df_es_direct) %>% 
+  bind_rows(df_es_calc, df_es_direct) %>%
   mutate(
     type = if_else(type == "WCSN", "DSN", type),  # fixing WCSN --> DSN
     type = if_else(type == "WCRD", "DRD", type),  # fixing WCRD --> DRD
@@ -521,12 +511,12 @@ df_clean <-
   left_join(cor_es, by = c("type", "stdid")) %>% 
   mutate_if(is.character, ~ str_replace_all(., '[\n\t]', '')) %>% 
   arrange(type, stdid)
-
-rm(df_es_calc, df_es_direct, df_post, df_prepost, cor_es, df_raw, df_hlm, a, c, t)
 ```
 
 
 ```{r}
+rm(df_es_calc, df_es_direct, df_post, df_prepost, cor_es, df_raw, df_hlm, a, c, t)
+
 ## add moderators ##
 
 moderators <-
@@ -585,6 +575,11 @@ rm(moderators)
 ```
 
 
+Notes on clustering corrections:
+
+- ICCs decided based on cluster size and grade level from Table 3 [here](https://journals.sagepub.com/doi/epub/10.3102/0162373707299706).
+- Table 4 in [this paper](https://link.springer.com/article/10.1007/s11145-013-9455-2/tables/4) reports very similar ICCs.
+- Also in above paper: "Though there is no agreed upon delineation of what constitutes a large ICC, several authors have noted that school level variation often ranges from .05 to .20 (Muthén & Satorra, 1989; Spybrook, Raudenbush, Congdon, & Martinez, 2009). Hox (2010) has put forth that ICCs of .05, .10, and .15 can be viewed as small, moderate, or large estimates."
 
 ```{r}
 #### Filtered datasets
@@ -592,11 +587,54 @@ df_c <- df_clean %>% filter(type %in% c("CRD", "CRP", "CSN"))
 df_d <- df_clean %>% filter(type %in% c("DRD", "DRP", "DSN"))
 df_l <- df_clean %>% filter(type %in% c("LRD", "LRP", "LSN"))
 df_w <- df_clean %>% filter(type %in% c("WPRD", "WPSN"))
+
+
+# hlm modifications for standard errors
+
+df_c <-
+  df_c %>% 
+  mutate(
+    EV = case_when(
+      stdid == "95" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "96" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "97" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "98" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "99" ~ EV * (1 + (6 - 1) * 0.242),
+      stdid == "100" ~ EV * (1 + (9 - 1) * 0.263),
+      stdid == "101" ~ EV * (1 + (5 - 1) * 0.242),
+      stdid == "102" ~ EV * (1 + (5 - 1) * 0.263),
+      stdid == "74" ~ EV * (1 + (15 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  )
+
+df_d <-
+  df_d %>% 
+  mutate(
+    EV = case_when(
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  )
+
+df_l <-
+  df_l %>% 
+  mutate(
+    EV = case_when(
+      stdid == "4"  ~ EV * (1 + (11 - 1) * 0.271),
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  )
+
+df_clean <- bind_rows(df_c, df_d, df_l, df_w) %>% arrange(type, stdid, AUTYR)
 ```
 
 
 
-Study and measure overview [223 total measures across 120 studies]:
+Study and measure overview [224 total measures across 120 studies]:
 
 ```{r}
 df_clean %>%
@@ -620,7 +658,7 @@ df_clean %>%
 
 <br/><br/>
 
-Effect size and its variance for all 223 study measures:
+Effect size and its variance for all 224 study measures:
 
 ```{r}
 # displaying clean df
@@ -630,14 +668,6 @@ df_clean %>%
   select(`Author (Year)` = AUTYR, type, ES, EV) %>% 
   mutate_if(is.numeric, ~ round(., 4)) %>%
   datatable()
-
-# df_clean %>%
-#   relocate(AUTYR, stdid) %>%
-#   arrange(AUTYR, type) %>% 
-#   relocate(`Study ID` = stdid, `Author (Year)` = AUTYR, `Outcome type` = type, `Effect Size` = ES, `Effect Size Variance` = EV) %>%
-#   clean_names(case = "title") %>% 
-#   mutate_if(is.numeric, ~ round(., 4)) %>% 
-#   writexl::write_xlsx(here::here("data_ed_tech_meta.xlsx"))
 ```
 
 
@@ -702,6 +732,8 @@ df_c %>%
 # Synthesizing effect sizes
 
 ## Code-related
+
+### Effects and forest plots
 
 ```{r}
 model_d <-
@@ -832,11 +864,82 @@ addpoly(model_drd, row = a2 + 4, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_dsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 ```
 
+
+### Variation with Imputed ICC
+
+```{r}
+# Define the function
+process_and_plot_model <- function(df) {
+  # Initialize a dataframe to store results
+  results <- data.frame(ICC = numeric(), Beta = numeric(), CI_Lower = numeric(), CI_Upper = numeric())
+
+  # Loop over ICC values
+  for (icc in seq(0, 1, by = 0.01)) {
+    # Process the dataframe
+    temp_model <- df %>%
+      mutate(type = factor(type, levels = c("DRP", "DRD", "DSN"))) %>% 
+      mutate(
+        AUTYR = if_else(str_detect(type, "D$"), str_c(AUTYR, " "), AUTYR),
+        AUTYR = if_else(str_detect(type, "N$"), str_c(AUTYR, "  "), AUTYR),
+      ) %>%
+      arrange(desc(type), desc(ES)) %>% 
+      mutate(
+        EV = case_when(
+          stdid == "61" ~ EV * (1 + (8 - 1) * icc),
+          stdid == "74" ~ EV * (1 + (14 - 1) * icc),
+          TRUE ~ EV
+        )
+      ) %>%
+      rma(
+        yi = ES, 
+        vi = EV, 
+        data = ., 
+        method = "REML",
+        slab = AUTYR
+      )
+
+    # Extract beta coefficient and standard error
+    beta <- coef(temp_model)[1]
+    se <- sqrt(diag(vcov(temp_model)))[1]
+    ci_lower <- beta - 1.96 * se
+    ci_upper <- beta + 1.96 * se
+    
+    # Store results
+    results <- rbind(results, data.frame(ICC = icc, Beta = beta, CI_Lower = ci_lower, CI_Upper = ci_upper))
+  }
+  
+  # Plotting
+  ggplot(results) +
+    geom_rect(data = df[1,], aes(xmin = 0.2, xmax = 0.27, ymin = -Inf, ymax = Inf), fill = "green", alpha = 0.4) +
+    geom_ribbon(aes(x = ICC, y = Beta, ymin = CI_Lower, ymax = CI_Upper), alpha = 0.2) +
+    geom_line(aes(x = ICC, y = Beta), color = "blue") +
+    #geom_vline(xintercept = c(0.2, 0.27), linetype="dashed", color = "blue") +
+    coord_cartesian(ylim = c(0, 0.45)) +
+    scale_x_continuous(breaks = scales::breaks_width(0.1), minor_breaks = NULL) +
+    scale_y_continuous(breaks = scales::breaks_width(0.05), minor_breaks = NULL) +
+    labs(
+      title = "Variation of sythesized effect size with imputed ICC values",
+      subtitle = "Green band shows ICC values for reading from prior literature (Hedges & Hedberg, 2007).\nGrey band represents 95% confidence interval around the synthesized effect size.",
+      x = "Intra-class correlation coefficient (ICC)",
+      y = "Synthesized effect size"
+    ) +
+    theme_minimal()
+}
+
+
+# usage
+process_and_plot_model(df_d)
+```
+
+
 ---
+
 
 <br/>
 
 ## Reading Comprehension
+
+### Effects and forest plots
 
 ```{r}
 model_c <-
@@ -931,6 +1034,79 @@ addpoly(model_csn, row = 2, cex = 1.25, col = "white", lwd = 3)
 ```
 
 
+### Variation with Imputed ICC
+
+```{r}
+# Define the function
+process_and_plot_model <- function(df) {
+  # Initialize a dataframe to store results
+  results <- data.frame(ICC = numeric(), Beta = numeric(), CI_Lower = numeric(), CI_Upper = numeric())
+  
+  # Loop over ICC values
+  for (icc in seq(0, 1, by = 0.01)) {
+    # Process the dataframe
+    temp_model <- df %>%
+      mutate(type = factor(type, levels = c("CRP", "CRD", "CSN"))) %>% 
+      mutate(
+        AUTYR = if_else(str_detect(type, "N$"), str_c(AUTYR, " "), AUTYR),
+      ) %>%
+      arrange(desc(type), desc(ES)) %>%
+      mutate(
+        EV = case_when(
+          stdid == "95" ~ EV * (1 + (20 - 1) * icc),
+          stdid == "96" ~ EV * (1 + (20 - 1) * icc),
+          stdid == "97" ~ EV * (1 + (20 - 1) * icc),
+          stdid == "98" ~ EV * (1 + (20 - 1) * icc),
+          stdid == "99" ~ EV * (1 + (6 - 1) * icc),
+          stdid == "100" ~ EV * (1 + (9 - 1) * icc),
+          stdid == "101" ~ EV * (1 + (5 - 1) * icc),
+          stdid == "102" ~ EV * (1 + (5 - 1) * icc),
+          stdid == "74" ~ EV * (1 + (15 - 1) * icc),
+          TRUE ~ EV
+        )
+      ) %>% 
+      rma(
+        yi = ES, 
+        vi = EV, 
+        data = ., 
+        method = "REML",
+        slab = AUTYR
+      )
+
+    # Extract beta coefficient and standard error
+    beta <- coef(temp_model)[1]
+    se <- sqrt(diag(vcov(temp_model)))[1]
+    ci_lower <- beta - 1.96 * se
+    ci_upper <- beta + 1.96 * se
+    
+    # Store results
+    results <- rbind(results, data.frame(ICC = icc, Beta = beta, CI_Lower = ci_lower, CI_Upper = ci_upper))
+  }
+  
+  # Plotting
+  ggplot(results) +
+    geom_rect(data = df[1,], aes(xmin = 0.2, xmax = 0.27, ymin = -Inf, ymax = Inf), fill = "green", alpha = 0.4) +
+    geom_ribbon(aes(x = ICC, y = Beta, ymin = CI_Lower, ymax = CI_Upper), alpha = 0.2) +
+    geom_line(aes(x = ICC, y = Beta), color = "blue") +
+    #geom_vline(xintercept = c(0.2, 0.27), linetype="dashed", color = "blue") +
+    coord_cartesian(ylim = c(0, 0.45)) +
+    scale_x_continuous(breaks = scales::breaks_width(0.1), minor_breaks = NULL) +
+    scale_y_continuous(breaks = scales::breaks_width(0.05), minor_breaks = NULL) +
+    labs(
+      title = "Variation of sythesized effect size with imputed ICC values",
+      subtitle = "Green band shows ICC values for reading from prior literature (Hedges & Hedberg, 2007).\nGrey band represents 95% confidence interval around the synthesized effect size.",
+      x = "Intra-class correlation coefficient (ICC)",
+      y = "Synthesized effect size"
+    ) +
+    theme_minimal()
+}
+
+
+# usage
+process_and_plot_model(df_c)
+```
+
+
 
 ---
 
@@ -938,6 +1114,8 @@ addpoly(model_csn, row = 2, cex = 1.25, col = "white", lwd = 3)
 
 
 ## Language-focused
+
+### Effects and forest plots
 
 ```{r}
 model_l <-
@@ -1071,6 +1249,73 @@ addpoly(model_lrd, row = a2 + 4, cex = 1.25, col = "white", lwd = 3)
 addpoly(model_lsn, row = 2, cex = 1.25, col = "white", lwd = 3)
 ```
 
+
+### Variation with Imputed ICC
+
+```{r}
+# Define the function
+process_and_plot_model <- function(df) {
+  # Initialize a dataframe to store results
+  results <- data.frame(ICC = numeric(), Beta = numeric(), CI_Lower = numeric(), CI_Upper = numeric())
+  
+  # Loop over ICC values
+  for (icc in seq(0, 1, by = 0.01)) {
+    # Process the dataframe
+    temp_model <- df %>%
+      mutate(type = factor(type, levels = c("LRP", "LRD", "LSN"))) %>%
+      mutate(
+        AUTYR = if_else(str_detect(type, "D$"), str_c(AUTYR, " "), AUTYR),
+        AUTYR = if_else(str_detect(type, "N$"), str_c(AUTYR, "  "), AUTYR),
+      ) %>% 
+      arrange(desc(type), desc(ES)) %>%
+      mutate(
+        EV = case_when(
+          stdid == "4"  ~ EV * (1 + (11 - 1) * icc),
+          stdid == "61" ~ EV * (1 + (8 - 1) * icc),
+          stdid == "74" ~ EV * (1 + (14 - 1) * icc),
+          TRUE ~ EV
+        )
+      ) %>%  
+      rma(
+        yi = ES, 
+        vi = EV, 
+        data = ., 
+        method = "REML",
+        slab = AUTYR
+      )
+    
+    # Extract beta coefficient and standard error
+    beta <- coef(temp_model)[1]
+    se <- sqrt(diag(vcov(temp_model)))[1]
+    ci_lower <- beta - 1.96 * se
+    ci_upper <- beta + 1.96 * se
+    
+    # Store results
+    results <- rbind(results, data.frame(ICC = icc, Beta = beta, CI_Lower = ci_lower, CI_Upper = ci_upper))
+  }
+  
+  # Plotting
+  ggplot(results) +
+    geom_rect(data = df[1,], aes(xmin = 0.2, xmax = 0.27, ymin = -Inf, ymax = Inf), fill = "green", alpha = 0.4) +
+    geom_ribbon(aes(x = ICC, y = Beta, ymin = CI_Lower, ymax = CI_Upper), alpha = 0.2) +
+    geom_line(aes(x = ICC, y = Beta), color = "blue") +
+    #geom_vline(xintercept = c(0.2, 0.27), linetype="dashed", color = "blue") +
+    coord_cartesian(ylim = c(0, 0.45)) +
+    scale_x_continuous(breaks = scales::breaks_width(0.1), minor_breaks = NULL) +
+    scale_y_continuous(breaks = scales::breaks_width(0.05), minor_breaks = NULL) +
+    labs(
+      title = "Variation of sythesized effect size with imputed ICC values",
+      subtitle = "Green band shows ICC values for reading from prior literature (Hedges & Hedberg, 2007).\nGrey band represents 95% confidence interval around the synthesized effect size.",
+      x = "Intra-class correlation coefficient (ICC)",
+      y = "Synthesized effect size"
+    ) +
+    theme_minimal()
+}
+
+
+# usage
+process_and_plot_model(df_l)
+```
 
 
 ---
@@ -2134,7 +2379,7 @@ df_d %>%
 ```
 
 ```{r, eval=F}
-df_l %>% filter(str_detect(AUTYR, "Korat")) %>% arrange(AUTYR)
+df_d %>% filter(ES > 1.5) %>% arrange(-ES)
 ```
 
 
@@ -2488,6 +2733,13 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^D")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>%
   rma(
     yi = ES, 
     vi = EV, 
@@ -2506,6 +2758,13 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^D")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>%
   rma(
     yi = ES, 
     vi = EV, 
@@ -2523,7 +2782,14 @@ df_append %>%
   agg(id = type_stdid, es = ES, var = EV, method = "BHHR", data = ., cor = 0.8) %>% 
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
-  filter(str_detect(type, "^D")) %>% 
+  filter(str_detect(type, "^D")) %>%
+  mutate(
+    EV = case_when(
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>%
   rma(
     yi = ES, 
     vi = EV, 
@@ -2545,6 +2811,20 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^C")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "95" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "96" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "97" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "98" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "99" ~ EV * (1 + (6 - 1) * 0.242),
+      stdid == "100" ~ EV * (1 + (9 - 1) * 0.263),
+      stdid == "101" ~ EV * (1 + (5 - 1) * 0.242),
+      stdid == "102" ~ EV * (1 + (5 - 1) * 0.263),
+      stdid == "74" ~ EV * (1 + (15 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2563,6 +2843,20 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^C")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "95" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "96" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "97" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "98" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "99" ~ EV * (1 + (6 - 1) * 0.242),
+      stdid == "100" ~ EV * (1 + (9 - 1) * 0.263),
+      stdid == "101" ~ EV * (1 + (5 - 1) * 0.242),
+      stdid == "102" ~ EV * (1 + (5 - 1) * 0.263),
+      stdid == "74" ~ EV * (1 + (15 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2581,6 +2875,20 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^C")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "95" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "96" ~ EV * (1 + (20 - 1) * 0.242),
+      stdid == "97" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "98" ~ EV * (1 + (20 - 1) * 0.263),
+      stdid == "99" ~ EV * (1 + (6 - 1) * 0.242),
+      stdid == "100" ~ EV * (1 + (9 - 1) * 0.263),
+      stdid == "101" ~ EV * (1 + (5 - 1) * 0.242),
+      stdid == "102" ~ EV * (1 + (5 - 1) * 0.263),
+      stdid == "74" ~ EV * (1 + (15 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2602,6 +2910,14 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^L")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "4"  ~ EV * (1 + (11 - 1) * 0.271),
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2620,6 +2936,14 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^L")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "4"  ~ EV * (1 + (11 - 1) * 0.271),
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
@@ -2638,6 +2962,14 @@ df_append %>%
   separate(id, c("type", "stdid")) %>% 
   rename(ES = es, EV = var) %>% 
   filter(str_detect(type, "^L")) %>% 
+  mutate(
+    EV = case_when(
+      stdid == "4"  ~ EV * (1 + (11 - 1) * 0.271),
+      stdid == "61" ~ EV * (1 + (8 - 1) * 0.239),
+      stdid == "74" ~ EV * (1 + (14 - 1) * 0.239),
+      TRUE ~ EV
+    )
+  ) %>% 
   rma(
     yi = ES, 
     vi = EV, 
